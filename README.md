@@ -6,10 +6,10 @@ Built from first principles (Foundations of AI for Business). The intelligence l
 
 ## Design & build docs
 
-The design rationale and the build playbook live in the companion workspace `ai_for_business/`:
+The design rationale and the build playbook live in the parent workspace (one level up):
 
-- **Design** — `ai_for_business/6_design/` (start with `PRODUCT_SPEC.md`)
-- **Build playbook** — `ai_for_business/7_build_playbook/` (start with `00_INDEX.md`)
+- **Design** — `../6_design/` (start with `PRODUCT_SPEC.md`)
+- **Build playbook** — `../7_build_playbook/` (start with `00_INDEX.md`)
 
 ## Repo layout
 
