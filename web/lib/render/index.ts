@@ -20,6 +20,10 @@ export type Step =
   | { kind: "probe"; probeId: number; title: string; prompt: string }
   | { kind: "stop"; title: string; point: string };
 
+// Model usage from a render that phrased through the live provider (for the
+// gesture log / cost observability). Absent in template mode.
+export type ModelUsage = { model?: string; tokens?: number };
+
 /** Briefing. The model (if live) only *phrases* the definition — it cannot add
  *  facts (strict tool-use + explicit instruction). Template falls back to the
  *  record's own definition verbatim, so this works with no key at zero cost. */
@@ -27,7 +31,7 @@ export async function renderEntity(
   e: EntityRecord,
   sessionId: string,
   opts: { hasTension: boolean },
-): Promise<Step> {
+): Promise<{ step: Step; usage?: ModelUsage }> {
   let point = e.definition ?? e.name;
 
   const phrased = await structuredCall<{ point: string }>({
@@ -48,12 +52,16 @@ export async function renderEntity(
     maxTokens: 300,
   });
   if (phrased.ok && phrased.data.point.trim()) point = phrased.data.point.trim();
+  const usage = phrased.ok ? { model: phrased.model, tokens: phrased.tokens } : undefined;
 
   const pullPoints: PullPoint[] = [];
   if (opts.hasTension) pullPoints.push({ tier: 1, label: "When does each view apply?" });
   pullPoints.push({ tier: 3, label: "Show the source" });
 
-  return { kind: "briefing", entityId: e.id, title: e.name, point, pullPoints };
+  return {
+    step: { kind: "briefing", entityId: e.id, title: e.name, point, pullPoints },
+    usage,
+  };
 }
 
 /** Tension -> two-column table, ALWAYS both sides (g11). Cells are the record's

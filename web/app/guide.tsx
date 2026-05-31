@@ -23,6 +23,15 @@ export default function Guide() {
   const [response, setResponse] = useState("");
   const [pending, start] = useTransition();
 
+  // Last-resort client guard: server actions already catch and return a stop
+  // Step, but a transport failure would reject the promise — show this instead
+  // of an unhandled error.
+  const clientError: Step = {
+    kind: "stop",
+    title: "Connection issue",
+    point: "That didn't reach the server. Check your connection and try again.",
+  };
+
   function reset() {
     setCoverage(null);
     setSource(null);
@@ -33,11 +42,15 @@ export default function Guide() {
     if (!text.trim()) return;
     reset();
     start(async () => {
-      const adv = await startGoal(state, text);
-      setState(adv.state);
-      setStep(adv.step);
-      setTopic(adv.gap ? null : text.trim());
-      setGoal("");
+      try {
+        const adv = await startGoal(state, text);
+        setState(adv.state);
+        setStep(adv.step);
+        setTopic(adv.gap ? null : text.trim());
+        setGoal("");
+      } catch {
+        setStep(clientError);
+      }
     });
   }
 
@@ -46,18 +59,26 @@ export default function Guide() {
     if (id == null) return;
     setSource(null);
     start(async () => {
-      const adv = await goDeeper(state, id);
-      setState(adv.state);
-      setStep(adv.step);
+      try {
+        const adv = await goDeeper(state, id);
+        setState(adv.state);
+        setStep(adv.step);
+      } catch {
+        setStep(clientError);
+      }
     });
   }
 
   function onForward() {
     reset();
     start(async () => {
-      const adv = await forward(state);
-      setState(adv.state);
-      setStep(adv.step);
+      try {
+        const adv = await forward(state);
+        setState(adv.state);
+        setStep(adv.step);
+      } catch {
+        setStep(clientError);
+      }
     });
   }
 
@@ -65,19 +86,29 @@ export default function Guide() {
     if (step?.kind !== "probe" || !response.trim()) return;
     const probeId = step.probeId;
     start(async () => {
-      const adv = await submitProbe(state, probeId, response);
-      setState(adv.state);
-      setStep(adv.step);
-      setCoverage(adv.coverage ?? null);
-      setSource(null);
-      setResponse("");
+      try {
+        const adv = await submitProbe(state, probeId, response);
+        setState(adv.state);
+        setStep(adv.step);
+        setCoverage(adv.coverage ?? null);
+        setSource(null);
+        setResponse("");
+      } catch {
+        setStep(clientError);
+      }
     });
   }
 
   function onSource() {
     const id = step?.kind === "briefing" ? step.entityId : state.target;
     if (id == null) return;
-    start(async () => setSource(await expandSource(id)));
+    start(async () => {
+      try {
+        setSource(await expandSource(id));
+      } catch {
+        setSource([]);
+      }
+    });
   }
 
   return (
