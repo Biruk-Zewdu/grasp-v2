@@ -11,7 +11,7 @@ import type { SeqGraph, Abstraction } from "@/lib/sequencer";
 const PREREQ_RELS = ["composed_of", "specializes"] as const;
 
 export async function loadGraph(versionId: number): Promise<SeqGraph> {
-  const [ents, rels, claims, tensions, probes] = await Promise.all([
+  const [ents, rels, allRels, claims, tensions, probes] = await Promise.all([
     db
       .select({ id: entity.id, name: entity.name, abstraction: entity.abstraction })
       .from(entity)
@@ -25,6 +25,10 @@ export async function loadGraph(versionId: number): Promise<SeqGraph> {
           inArray(relation.relType, PREREQ_RELS),
         ),
       ),
+    db
+      .select({ from: relation.fromEntity, to: relation.toEntity })
+      .from(relation)
+      .where(eq(relation.corpusVersion, versionId)),
     db
       .select({ id: claim.id, conceptIds: claim.conceptIds })
       .from(claim)
@@ -42,6 +46,17 @@ export async function loadGraph(versionId: number): Promise<SeqGraph> {
   const conceptsByClaim = new Map<number, number[]>(
     claims.map((c) => [c.id, c.conceptIds ?? []]),
   );
+
+  // undirected neighborhood for tension matching
+  const related = new Map<number, number[]>();
+  const link = (a: number, b: number) => {
+    if (!related.has(a)) related.set(a, []);
+    related.get(a)!.push(b);
+  };
+  for (const r of allRels) {
+    link(r.from, r.to);
+    link(r.to, r.from);
+  }
 
   return {
     entities: new Map(
@@ -62,5 +77,6 @@ export async function loadGraph(versionId: number): Promise<SeqGraph> {
       conceptIds: p.conceptIds ?? [],
       tensionId: p.tensionId ?? null,
     })),
+    related,
   };
 }

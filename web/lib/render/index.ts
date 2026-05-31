@@ -9,8 +9,10 @@ export type PullPoint = { tier: number; label: string };
 export type TensionTable = {
   dimension: string | null;
   labelA: string;
+  propA: string;
   whenA: string;
   labelB: string;
+  propB: string;
   whenB: string;
 };
 export type Step =
@@ -68,11 +70,13 @@ export function renderTension(t: TensionRecord): Step {
     table: {
       dimension: t.dimension,
       labelA: `${t.claimA.paradigm}${t.claimA.thinker ? ` (${t.claimA.thinker})` : ""}`,
+      propA: t.claimA.proposition,
       whenA: t.conditionsA,
       labelB: `${t.claimB.paradigm}${t.claimB.thinker ? ` (${t.claimB.thinker})` : ""}`,
+      propB: t.claimB.proposition,
       whenB: t.conditionsB,
     },
-    pullPoints: [{ tier: 2, label: "See each side's claim" }],
+    pullPoints: [{ tier: 3, label: "Show the source" }],
   };
 }
 

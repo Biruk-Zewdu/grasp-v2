@@ -30,6 +30,7 @@ const state = (over: Partial<SeqState> = {}): SeqState => ({
   target: 1,
   seen: [],
   grasped: [],
+  probed: [],
   seenTensions: [],
   ...over,
 });
@@ -85,6 +86,13 @@ describe("nextStep", () => {
   it("never returns a model decision — output is a pure record ref", () => {
     const out = nextStep(graph(), state());
     expect(["entity", "probe", "tension", "stop"]).toContain(out.kind);
+  });
+
+  it("does not re-probe a concept already probed (a miss opens depth, no loop)", () => {
+    // C seen + probed but NOT grasped -> treated as settled, advance to B
+    expect(
+      nextStep(graph(), state({ seen: [3], probed: [3] })),
+    ).toEqual({ kind: "entity", entityId: 2 });
   });
 
   it("a target with no prerequisites goes straight to its own briefing", () => {

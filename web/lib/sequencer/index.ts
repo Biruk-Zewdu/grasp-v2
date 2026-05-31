@@ -48,12 +48,18 @@ export interface SeqGraph {
   prereqs: PrereqEdge[];
   tensions: SeqTension[];
   probes: SeqProbe[];
+  /** Optional: concept -> directly-related concept ids (any relation, both
+   *  directions). Lets a concept surface a tension in its neighborhood (e.g.
+   *  "reinforcement learning" -> the reward-vs-management tension keyed to
+   *  "reward hypothesis"). Falls back to direct conceptId match when absent. */
+  related?: Map<number, number[]>;
 }
 
 export interface SeqState {
   target: number;
   seen: number[]; // concept ids whose briefing was shown
-  grasped: number[]; // concept ids demonstrated via a probe
+  grasped: number[]; // concept ids demonstrated via a probe (probe hit)
+  probed: number[]; // concept ids already probed (hit OR miss) — never re-probe
   seenTensions: number[]; // tension ids already surfaced
 }
 
@@ -105,24 +111,25 @@ function conceptProbeFor(graph: SeqGraph, id: number): SeqProbe | undefined {
 export function nextStep(graph: SeqGraph, state: SeqState): StepRef {
   const grasped = new Set(state.grasped);
   const seen = new Set(state.seen);
+  const probed = new Set(state.probed);
   const seenTensions = new Set(state.seenTensions);
 
-  // 1. ungrasped prerequisites
-  const prereqs = [...transitivePrereqs(graph, state.target)].filter(
-    (p) => !grasped.has(p),
-  );
+  // A concept stops blocking once grasped OR probed (a missed probe opens depth,
+  // it does not trap the learner re-answering the same question).
+  const done = (id: number) => grasped.has(id) || probed.has(id);
+
+  // 1. unsettled prerequisites
+  const prereqs = [...transitivePrereqs(graph, state.target)].filter((p) => !done(p));
   if (prereqs.length) {
-    // prefer a prereq that is "ready" (all its own prereqs grasped), most
+    // prefer a prereq that is "ready" (all its own prereqs settled), most
     // foundational first, then lowest id — deterministic.
-    const ready = prereqs.filter((p) =>
-      directPrereqs(graph, p).every((d) => grasped.has(d)),
-    );
+    const ready = prereqs.filter((p) => directPrereqs(graph, p).every((d) => done(d)));
     const pool = ready.length ? ready : prereqs;
     const pick = [...pool].sort(
       (a, b) => abstractionRank(graph, b) - abstractionRank(graph, a) || a - b,
     )[0];
 
-    if (seen.has(pick)) {
+    if (seen.has(pick) && !probed.has(pick)) {
       const probe = conceptProbeFor(graph, pick);
       if (probe) return { kind: "probe", probeId: probe.id };
     }
@@ -131,14 +138,18 @@ export function nextStep(graph: SeqGraph, state: SeqState): StepRef {
 
   // 2. the target itself
   if (!seen.has(state.target)) return { kind: "entity", entityId: state.target };
-  if (!grasped.has(state.target)) {
+  if (!done(state.target)) {
     const probe = conceptProbeFor(graph, state.target);
     if (probe) return { kind: "probe", probeId: probe.id };
   }
 
-  // 3. nearest unsurfaced tension involving the target
+  // 3. nearest unsurfaced tension involving the target or its neighborhood
+  const relevant = new Set<number>([
+    state.target,
+    ...(graph.related?.get(state.target) ?? []),
+  ]);
   const tension = graph.tensions.find(
-    (t) => t.conceptIds.includes(state.target) && !seenTensions.has(t.id),
+    (t) => !seenTensions.has(t.id) && t.conceptIds.some((c) => relevant.has(c)),
   );
   if (tension) return { kind: "tension", tensionId: tension.id };
 
