@@ -187,7 +187,7 @@ export default function Guide() {
                 Continue
               </Button>
               {step.kind === "briefing" &&
-                step.pullPoints.some((p) => p.tier === 1) && (
+                step.pullPoints.some((p) => p.tier === 2) && (
                   <button
                     className="text-sm text-neutral-500 underline-offset-2 hover:underline disabled:opacity-50"
                     onClick={onDeeper}
@@ -196,7 +196,8 @@ export default function Guide() {
                     Go deeper →
                   </button>
                 )}
-              {(step.kind === "briefing" || step.kind === "tension") && !source && (
+              {(step.kind === "briefing" || step.kind === "tension" || step.kind === "reasoning") &&
+                !source && (
                 <button
                   className="text-sm text-neutral-500 underline-offset-2 hover:underline disabled:opacity-50"
                   onClick={onSource}
@@ -237,6 +238,15 @@ function StepCard({ step, coverage }: { step: Step; coverage: Coverage | null })
 
       {step.kind === "tension" ? (
         <TensionGrid table={step.table} />
+      ) : step.kind === "reasoning" ? (
+        <div className="space-y-3">
+          {[step.sideA, step.sideB].map((s, i) => (
+            <div key={i} className="space-y-1">
+              <p className="text-xs font-medium text-neutral-900">{s.label}</p>
+              <p className="text-sm leading-relaxed text-neutral-700">{s.why}</p>
+            </div>
+          ))}
+        </div>
       ) : step.kind === "probe" ? (
         <p className="text-sm text-neutral-800">{step.prompt}</p>
       ) : (

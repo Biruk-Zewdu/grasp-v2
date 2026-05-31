@@ -1,6 +1,12 @@
 import "server-only";
 import { structuredCall } from "@/lib/server/model";
-import type { EntityRecord, TensionRecord, ProbeRecord, ConceptContext } from "@/lib/db/records";
+import type {
+  EntityRecord,
+  TensionRecord,
+  ProbeRecord,
+  ConceptContext,
+  TensionReasoning,
+} from "@/lib/db/records";
 
 // A Step is composed at serve time and never stored (store atoms, compose steps).
 // It is a plain serializable object so it can cross the server->client boundary.
@@ -18,6 +24,13 @@ export type Step =
   | { kind: "briefing"; entityId: number; title: string; point: string; pullPoints: PullPoint[]; catch?: TensionTable }
   | { kind: "tension"; tensionId: number; title: string; point: string; table: TensionTable; pullPoints: PullPoint[] }
   | { kind: "probe"; probeId: number; title: string; prompt: string }
+  | {
+      kind: "reasoning";
+      tensionId: number;
+      title: string;
+      sideA: { label: string; why: string };
+      sideB: { label: string; why: string };
+    }
   | { kind: "stop"; title: string; point: string };
 
 // Model usage from a render that phrased through the live provider (for the
@@ -80,10 +93,12 @@ export async function renderEntity(
   if (reasoned.ok && reasoned.data.point.trim()) point = reasoned.data.point.trim();
   const usage = reasoned.ok ? { model: reasoned.model, tokens: reasoned.tokens } : undefined;
 
-  // Depth-on-demand: source is always pullable. The "catch" (the live tension) is
-  // NOT a pull — when one is relevant it ships INLINE in the step (SERVE_DESIGN §6,
-  // §9); opts.catch carries it. The D2 "why" pull is added in a later stage.
-  const pullPoints: PullPoint[] = [{ tier: 3, label: "Show the source" }];
+  // Depth-on-demand: the "catch" (D1) ships INLINE (opts.catch). When a catch is
+  // present, the next pull is the D2 "why" (rival reasoning + the premises it rests
+  // on); source (D3) is always pullable. (SERVE_DESIGN §5–6, §9.)
+  const pullPoints: PullPoint[] = [];
+  if (opts.catch) pullPoints.push({ tier: 2, label: "Why does each side hold?" });
+  pullPoints.push({ tier: 3, label: "Show the source" });
 
   return {
     step: { kind: "briefing", entityId: e.id, title: e.name, point, pullPoints, catch: opts.catch },
@@ -109,6 +124,64 @@ export function renderTension(t: TensionRecord): Step {
       whenB: t.conditionsB,
     },
     pullPoints: [{ tier: 3, label: "Show the source" }],
+  };
+}
+
+/** Depth tier 2 — the "why" (SERVE_DESIGN §9). The reasoner explains why each
+ *  rival side holds, grounded ONLY in each side's claim + its TMS rationale + the
+ *  premises it rests on. It never says which side wins (pluralism g11). Template
+ *  falls back to the rationale + premises verbatim, so it works at zero cost. */
+export async function renderReasoning(
+  r: TensionReasoning,
+  sessionId: string,
+): Promise<{ step: Step & { kind: "reasoning" }; usage?: ModelUsage }> {
+  const tmpl = (s: TensionReasoning["sideA"]) => {
+    const bits: string[] = [];
+    if (s.rationale) bits.push(s.rationale);
+    if (s.premises.length) bits.push(`It rests on: ${s.premises.join("; ")}.`);
+    return bits.join(" ") || "Grounded in the concept's definitions.";
+  };
+  let whyA = tmpl(r.sideA);
+  let whyB = tmpl(r.sideB);
+
+  const fmt = (s: TensionReasoning["sideA"]) =>
+    `${s.label}: "${s.proposition}"\nRationale: ${s.rationale ?? "(none)"}\n` +
+    `Rests on: ${s.premises.length ? s.premises.join("; ") : "(its concepts' definitions)"}`;
+
+  const reasoned = await structuredCall<{ whyA: string; whyB: string }>({
+    sessionId,
+    role: "reason",
+    system:
+      "Explain WHY each of two rival positions holds, reasoning ONLY over the " +
+      "supplied material for each side (its claim, its rationale, and the premises " +
+      "it rests on). 2-3 plain sentences per side. Do NOT say which side is right — " +
+      "both hold under their own conditions (preserve the tension). Do NOT introduce " +
+      "facts, names, or claims beyond the supplied material.",
+    user: `Side A — ${fmt(r.sideA)}\n\nSide B — ${fmt(r.sideB)}`,
+    schemaName: "reasoning",
+    schema: {
+      type: "object",
+      properties: { whyA: { type: "string" }, whyB: { type: "string" } },
+      required: ["whyA", "whyB"],
+      additionalProperties: false,
+    },
+    maxTokens: 600,
+  });
+  if (reasoned.ok) {
+    if (reasoned.data.whyA.trim()) whyA = reasoned.data.whyA.trim();
+    if (reasoned.data.whyB.trim()) whyB = reasoned.data.whyB.trim();
+  }
+  const usage = reasoned.ok ? { model: reasoned.model, tokens: reasoned.tokens } : undefined;
+
+  return {
+    step: {
+      kind: "reasoning",
+      tensionId: -1, // set by caller (the tension id)
+      title: "Why each side holds",
+      sideA: { label: r.sideA.label, why: whyA },
+      sideB: { label: r.sideB.label, why: whyB },
+    },
+    usage,
   };
 }
 

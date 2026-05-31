@@ -6,6 +6,7 @@ import {
   getEntity,
   getConceptContext,
   getTension,
+  getTensionReasoning,
   getProbe,
   getProvenanceForEntity,
 } from "@/lib/db/records";
@@ -14,6 +15,7 @@ import { nextStep, type SeqGraph } from "@/lib/sequencer";
 import {
   renderEntity,
   renderTension,
+  renderReasoning,
   renderProbe,
   renderStop,
   type Step,
@@ -256,8 +258,10 @@ export async function submitProbe(
   }
 }
 
-/** Pull deeper: surface this concept's tension (the rival views + when each
- *  holds) on demand, rather than waiting for the sequencer to reach it. */
+/** Pull deeper (D2 — the "why", SERVE_DESIGN §9). The catch (the tension table)
+ *  is already shown inline at D0; going deeper surfaces the rival *reasoning* — why
+ *  each side holds and the premises it rests on (from the TMS). If the concept has
+ *  no tension/justification to deepen, move on. */
 export async function goDeeper(state: GuideState, entityId: number): Promise<Advance> {
   try {
     const userId = await getUserId(state.sessionId);
@@ -266,28 +270,27 @@ export async function goDeeper(state: GuideState, entityId: number): Promise<Adv
 
     const loaded = await loadProgress(userId, toProgress(state));
     const graph = await loadGraph(v.id);
-    const t = neighbourhoodTension(graph, entityId, loaded.seenTensions);
-    if (!t) {
+    // Find the concept's tension regardless of seen status — we're deepening the
+    // one whose catch already showed, not surfacing a new one.
+    const t = neighbourhoodTension(graph, entityId, []);
+    const reasoning = t ? await getTensionReasoning(t.id, v.id) : null;
+    if (!t || !reasoning) {
       const { step: s, next } = await step(userId, v.id, loaded, "deeper"); // nothing deeper — move on
       await saveProgress(userId, v.id, next);
       return { step: s, state: toState(state.sessionId, next) };
     }
-    const rec = await getTension(t.id);
-    if (!rec) {
-      const { step: s, next } = await step(userId, v.id, loaded, "deeper");
-      await saveProgress(userId, v.id, next);
-      return { step: s, state: toState(state.sessionId, next) };
-    }
-    const next: Progress = { ...loaded, seenTensions: uniq([...loaded.seenTensions, t.id]) };
-    await saveProgress(userId, v.id, next);
+    const r = await renderReasoning(reasoning, userId);
+    const s = { ...r.step, tensionId: t.id };
     await logGesture({
       userId,
       gesture: "deeper",
       targetEntity: loaded.target,
-      recordKind: "tension",
+      recordKind: "reasoning",
       recordId: t.id,
+      model: r.usage?.model ?? null,
+      tokens: r.usage?.tokens ?? null,
     });
-    return { step: renderTension(rec), state: toState(state.sessionId, next) };
+    return { step: s, state: toState(state.sessionId, loaded) };
   } catch {
     return { step: errorStep(), state };
   }

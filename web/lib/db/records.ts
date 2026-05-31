@@ -10,7 +10,10 @@ import {
   probe,
   provenance,
   textUnit,
+  beliefNode,
+  justification,
 } from "./schema";
+import { assembleSide } from "@/lib/reasoning/assemble";
 
 export type EntityRecord = {
   id: number;
@@ -166,6 +169,59 @@ export async function getConceptContext(
         conditions: c.conditions,
       })),
   };
+}
+
+// Depth tier 2 — the "why" (SERVE_DESIGN §9). For a tension, each side's claim
+// plus its TMS justification: the rationale and the premise propositions it rests
+// on (resolved from the dependency network db/belief.py built). The reasoner
+// explains the why from this; it never invents a justification.
+export type TensionReasoning = {
+  dimension: string | null;
+  sideA: { label: string; proposition: string; rationale: string | null; premises: string[] };
+  sideB: { label: string; proposition: string; rationale: string | null; premises: string[] };
+};
+
+export async function getTensionReasoning(
+  tensionId: number,
+  versionId: number,
+): Promise<TensionReasoning | null> {
+  const trows = await db.select().from(tension).where(eq(tension.id, tensionId)).limit(1);
+  const t = trows[0];
+  if (!t) return null;
+
+  const [claims, bnodes, justs] = await Promise.all([
+    db
+      .select({
+        id: claim.id,
+        proposition: claim.proposition,
+        paradigm: claim.paradigm,
+        thinker: claim.thinker,
+      })
+      .from(claim)
+      .where(eq(claim.corpusVersion, versionId)),
+    db.select({ id: beliefNode.id, claimId: beliefNode.claimId }).from(beliefNode),
+    db
+      .select({
+        beliefNode: justification.beliefNode,
+        antecedentBeliefIds: justification.antecedentBeliefIds,
+        rationale: justification.rationale,
+      })
+      .from(justification),
+  ]);
+
+  const claimProps = new Map(claims.map((c) => [c.id, c.proposition]));
+  const meta = new Map(claims.map((c) => [c.id, c]));
+  const side = (cid: number) => {
+    const m = meta.get(cid);
+    const r = assembleSide(cid, bnodes, justs, claimProps);
+    return {
+      label: m ? `${m.paradigm}${m.thinker ? ` (${m.thinker})` : ""}` : "",
+      proposition: m?.proposition ?? "",
+      rationale: r.rationale,
+      premises: r.premises,
+    };
+  };
+  return { dimension: t.dimension, sideA: side(t.claimA), sideB: side(t.claimB) };
 }
 
 /** Depth tier 3: the source passages behind a concept's claims (raw, no model). */
