@@ -55,6 +55,7 @@ class Entity(BaseModel):
     type: EntityType
     definition: str | None = None
     abstraction: Abstraction | None = None
+    paradigm: Paradigm | None = None  # Module E TAG_PARADIGM; null for thinkers/examples
     source_ids: list[int] = Field(default_factory=list)
     corpus_version: int
 
