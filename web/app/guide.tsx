@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { turn, expandSources } from "./actions";
-import type { AnswerCard, Catalog } from "@/lib/guide/types";
+import { turn, basics, expandSources } from "./actions";
+import type { AnswerCard, Catalog, GlossTerm } from "@/lib/guide/types";
 import type { TensionTable } from "@/lib/render";
 
 // Agentic moves the learner can trigger on the current answer — each is a
@@ -61,6 +61,31 @@ export default function Guide({ catalog }: { catalog: Catalog }) {
     start(async () => {
       const s = await expandSources(ids);
       setSources((p) => ({ ...p, [i]: s.length ? s : ["No source passage on file."] }));
+    });
+  }
+
+  function startBasics(topic: string) {
+    if (!topic.trim() || pending) return;
+    const h = history();
+    start(async () => {
+      let card: AnswerCard;
+      try {
+        card = await basics(sessionId, topic, h);
+      } catch {
+        card = {
+          question: `Start from the basics: ${topic}`,
+          framing: `Building up to: ${topic}`,
+          prose: "That didn't reach the server. Try again.",
+          table: null,
+          sourceConceptIds: [],
+          outOfScope: false,
+        };
+      }
+      setThread((t) => {
+        const nt = [...t, card];
+        setActive(nt.length - 1);
+        return nt;
+      });
     });
   }
 
@@ -125,7 +150,29 @@ export default function Guide({ catalog }: { catalog: Catalog }) {
               </h2>
             )}
             {current.prose && (
-              <p className="text-sm leading-relaxed text-neutral-800">{current.prose}</p>
+              <Prose
+                text={current.prose}
+                glossary={current.glossary ?? []}
+                onExplore={(term) => send(`What is ${term}, and why does it matter?`)}
+              />
+            )}
+            {current.path && current.path.length > 0 && (
+              <ol className="space-y-2">
+                {current.path.map((r, n) => (
+                  <li key={r.id}>
+                    <button
+                      onClick={() => send(`What is ${r.name}, and why does it matter?`)}
+                      disabled={pending}
+                      className="block w-full rounded-xl border border-neutral-200 p-3 text-left hover:border-neutral-400 disabled:opacity-50"
+                    >
+                      <span className="text-sm font-medium text-neutral-900">
+                        {n + 1}. {r.name}
+                      </span>
+                      <span className="block text-xs leading-snug text-neutral-500">{r.why}</span>
+                    </button>
+                  </li>
+                ))}
+              </ol>
             )}
             {current.outOfScope && (
               <p className="rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-600">
@@ -141,6 +188,9 @@ export default function Guide({ catalog }: { catalog: Catalog }) {
             {active != null && sources[active] && <SourceBlock passages={sources[active]} />}
 
             <div className="flex flex-wrap gap-2 border-t border-neutral-100 pt-4">
+              <ActionBtn onClick={() => startBasics(current.question)} disabled={pending}>
+                Start from the basics
+              </ActionBtn>
               {ACTIONS.map((a) => (
                 <ActionBtn key={a.label} onClick={() => send(a.q)} disabled={pending}>
                   {a.label}
@@ -205,6 +255,68 @@ export default function Guide({ catalog }: { catalog: Catalog }) {
         </form>
       </aside>
     </main>
+  );
+}
+
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+// Prose with inline key terms: any artifact concept named in the text is dotted-
+// underlined; hover shows its verbatim definition, click explores it (§7a-b).
+function Prose({
+  text,
+  glossary,
+  onExplore,
+}: {
+  text: string;
+  glossary: GlossTerm[];
+  onExplore: (term: string) => void;
+}) {
+  const cls = "text-sm leading-relaxed text-neutral-800";
+  const terms = glossary.filter((g) => g.term && g.definition);
+  if (!terms.length) return <p className={cls}>{text}</p>;
+
+  const byLower = new Map(terms.map((t) => [t.term.toLowerCase(), t]));
+  const re = new RegExp(
+    `\\b(${[...terms]
+      .sort((a, b) => b.term.length - a.term.length)
+      .map((t) => escapeRe(t.term))
+      .join("|")})\\b`,
+    "gi",
+  );
+
+  const nodes: React.ReactNode[] = [];
+  let last = 0;
+  let key = 0;
+  for (const m of text.matchAll(re)) {
+    const idx = m.index ?? 0;
+    if (idx > last) nodes.push(text.slice(last, idx));
+    const g = byLower.get(m[0].toLowerCase());
+    nodes.push(
+      g ? (
+        <Term key={key++} word={m[0]} def={g.definition} onClick={() => onExplore(g.term)} />
+      ) : (
+        m[0]
+      ),
+    );
+    last = idx + m[0].length;
+  }
+  nodes.push(text.slice(last));
+  return <p className={cls}>{nodes}</p>;
+}
+
+function Term({ word, def, onClick }: { word: string; def: string; onClick: () => void }) {
+  return (
+    <span className="group relative inline">
+      <button
+        onClick={onClick}
+        className="cursor-help underline decoration-dotted decoration-neutral-400 underline-offset-2 hover:text-neutral-950"
+      >
+        {word}
+      </button>
+      <span className="pointer-events-none absolute bottom-full left-0 z-20 mb-1 hidden w-64 rounded-lg bg-neutral-900 px-3 py-2 text-xs font-normal leading-snug text-white shadow-lg group-hover:block">
+        {def}
+      </span>
+    </span>
   );
 }
 

@@ -137,6 +137,18 @@ export async function getEntitiesForVersion(versionId: number): Promise<EntityRe
   }));
 }
 
+/** Name + definition for a set of concept ids — for inline glossing and the
+ *  Foundations Path rungs (definitions stay the artifact's, verbatim). */
+export async function getConceptBriefs(
+  ids: number[],
+): Promise<{ id: number; name: string; definition: string | null }[]> {
+  if (!ids.length) return [];
+  return db
+    .select({ id: entity.id, name: entity.name, definition: entity.definition })
+    .from(entity)
+    .where(inArray(entity.id, ids));
+}
+
 /** A single tension as the verbatim two-column record (cells the model never writes). */
 export async function getTension(id: number): Promise<TensionRecord | null> {
   const rows = await db.select().from(tension).where(eq(tension.id, id)).limit(1);

@@ -13,7 +13,15 @@ export type AgentAnswer = {
   prose: string; // the grounded answer
   tensionId: number | null; // a real tension to render verbatim, if one applies
   sourceConceptIds: number[]; // concepts grounded on (for the provenance pull)
+  keyTermIds: number[]; // concept ids mentioned in the prose, for inline glossing
   outOfScope: boolean; // the artifact doesn't cover this — say so, don't fabricate
+};
+
+// A foundations ladder for "start from the basics" (SERVE_DESIGN §7a-a).
+export type BasicsPath = {
+  framing: string;
+  prose: string;
+  basics: { conceptId: number; why: string }[];
 };
 
 const CONSTITUTION =
@@ -30,7 +38,10 @@ const CONSTITUTION =
   "4. Be concise (a short briefing, not an essay). Use the course's framing: the " +
   "Simon/Minsky/McCarthy symbolic view is the lens; the rival deep-learning view is content " +
   "inside a tension, never the verdict.\n" +
-  "5. Set sourceConceptIds to the concept ids you grounded the answer on.\n";
+  "5. Set sourceConceptIds to the concept ids you grounded the answer on.\n" +
+  "6. Set keyTermIds to the ids of artifact concepts you actually NAME in the prose that a " +
+  "learner might want defined inline (use the concept's exact name in the prose so it can be " +
+  "glossed).\n";
 
 const ANSWER_SCHEMA = {
   type: "object",
@@ -39,9 +50,29 @@ const ANSWER_SCHEMA = {
     prose: { type: "string" },
     tensionId: { type: ["integer", "null"] },
     sourceConceptIds: { type: "array", items: { type: "integer" } },
+    keyTermIds: { type: "array", items: { type: "integer" } },
     outOfScope: { type: "boolean" },
   },
-  required: ["framing", "prose", "tensionId", "sourceConceptIds", "outOfScope"],
+  required: ["framing", "prose", "tensionId", "sourceConceptIds", "keyTermIds", "outOfScope"],
+  additionalProperties: false,
+} as const;
+
+const BASICS_SCHEMA = {
+  type: "object",
+  properties: {
+    framing: { type: "string" },
+    prose: { type: "string" },
+    basics: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: { conceptId: { type: "integer" }, why: { type: "string" } },
+        required: ["conceptId", "why"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["framing", "prose", "basics"],
   additionalProperties: false,
 } as const;
 
@@ -75,6 +106,7 @@ export async function runTurn(
       prose: a.prose?.trim() || "",
       tensionId: a.tensionId,
       sourceConceptIds: a.sourceConceptIds ?? [],
+      keyTermIds: a.keyTermIds ?? [],
       outOfScope: a.outOfScope,
     };
   }
@@ -90,6 +122,43 @@ export async function runTurn(
     prose: e?.definition ?? "",
     tensionId: null,
     sourceConceptIds: e ? [e.id] : [],
+    keyTermIds: e ? [e.id] : [],
     outOfScope: !e,
   };
+}
+
+/** "Start from the basics": an ordered foundations ladder of real artifact concepts
+ *  that build up to `topic`, bottom-up (SERVE_DESIGN §7a-a). Learner-pulled. */
+export async function runBasics(
+  topic: string,
+  history: string,
+  versionId: number,
+  sessionId: string,
+): Promise<BasicsPath> {
+  const artifact = await getArtifactContext(versionId);
+  const res = await structuredCall<BasicsPath>({
+    sessionId,
+    role: "reason",
+    cacheSystem: true,
+    system: `${CONSTITUTION}\n\n=== ARTIFACT ===\n${artifact}`,
+    user:
+      (history ? `Conversation so far:\n${history}\n\n` : "") +
+      `The learner wants to START FROM THE BASICS for: ${topic}\n\n` +
+      `Return an ordered foundations ladder of 3-6 rungs that build up to this topic, MOST ` +
+      `FOUNDATIONAL FIRST, each rung a REAL concept id from the artifact with one short line on ` +
+      `why it matters / what it unlocks. End at the topic's own concept if it is in the artifact. ` +
+      `Use ONLY artifact concept ids; if the topic has no real prerequisites here, return a 1-2 ` +
+      `rung path and say so in the prose.`,
+    schemaName: "basics",
+    schema: BASICS_SCHEMA as unknown as Record<string, unknown>,
+    maxTokens: 700,
+  });
+  if (res.ok) {
+    return {
+      framing: res.data.framing?.trim() || `Building up to: ${topic}`,
+      prose: res.data.prose?.trim() || "",
+      basics: res.data.basics ?? [],
+    };
+  }
+  return { framing: `Building up to: ${topic}`, prose: "", basics: [] };
 }
