@@ -26,4 +26,3 @@ Two languages on purpose: **Python** = validate + load only; everything serve-si
 ## Status
 
 Scaffold only — no implementation yet. Build order is the playbook's phase docs: **M0 → M1 → M2 → M3 → M4**.
-</content>
