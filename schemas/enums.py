@@ -69,3 +69,8 @@ class ClaimStatus(str, Enum):
 class SourceKind(str, Enum):
     session = "session"
     paper = "paper"
+
+
+class ProbeKind(str, Enum):
+    concept = "concept"
+    tension = "tension"

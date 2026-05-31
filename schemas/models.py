@@ -17,6 +17,7 @@ from .enums import (
     ClaimType,
     EntityType,
     Paradigm,
+    ProbeKind,
     RelationType,
     SourceKind,
 )
@@ -130,3 +131,26 @@ class Viewpoint(BaseModel):
     thinker: str | None = None
     conditions: str | None = None
     superseded_by: int | None = None
+
+
+class Probe(BaseModel):
+    """A Socratic check (reverse registration, M5). `expected_signals` is the GROUNDED
+    rubric — at serve time the model checks coverage of these, never truth (g12)."""
+
+    id: int | None = None
+    kind: ProbeKind
+    prompt: str
+    concept_ids: list[int] = Field(default_factory=list)
+    tension_id: int | None = None
+    expected_signals: list[str] = Field(min_length=1)
+    source_id: int | None = None
+    corpus_version: int
+
+    @model_validator(mode="after")
+    def _target(self) -> "Probe":
+        # mirrors the DB probe_target check
+        if self.kind == ProbeKind.tension and self.tension_id is None:
+            raise ValueError("tension-probe requires tension_id")
+        if self.kind == ProbeKind.concept and not self.concept_ids:
+            raise ValueError("concept-probe requires concept_ids")
+        return self

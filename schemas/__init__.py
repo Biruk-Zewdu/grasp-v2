@@ -6,6 +6,7 @@ from .enums import (
     ClaimType,
     EntityType,
     Paradigm,
+    ProbeKind,
     RelationType,
     SourceKind,
 )
@@ -15,6 +16,7 @@ from .models import (
     CorpusVersion,
     Entity,
     Justification,
+    Probe,
     Provenance,
     Relation,
     Source,
@@ -25,7 +27,7 @@ from .models import (
 
 __all__ = [
     "Abstraction", "BeliefLabel", "ClaimStatus", "ClaimType", "EntityType",
-    "Paradigm", "RelationType", "SourceKind",
+    "Paradigm", "ProbeKind", "RelationType", "SourceKind",
     "BeliefNode", "Claim", "CorpusVersion", "Entity", "Justification",
-    "Provenance", "Relation", "Source", "Tension", "TextUnit", "Viewpoint",
+    "Probe", "Provenance", "Relation", "Source", "Tension", "TextUnit", "Viewpoint",
 ]
