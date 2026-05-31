@@ -12,6 +12,30 @@ export type AskRoute =
   | { kind: "concept"; entityId: number; name: string }
   | { kind: "gap" };
 
+// What the learner's message IS, in registration terms (SERVE_DESIGN §8). All
+// four are state updates feeding the one difference function — not just a lookup.
+export type AskIntent = "follow_up" | "objection" | "new_concept" | "situation" | "off_topic";
+
+/** Map a classified intent to a route. Clarifications and objections deepen the
+ *  current concept (the why / rival side); a named concept or an anchored
+ *  situation switches; anything that anchors to nothing stays put rather than
+ *  fabricating a jump; off_topic falls off-corpus. */
+export function routeFromIntent(
+  intent: AskIntent,
+  entityId: number | null,
+  ents: EntityRecord[],
+  current: { id: number },
+): AskRoute {
+  if (intent === "follow_up" || intent === "objection") return { kind: "deepen" };
+  if (intent === "new_concept" || intent === "situation") {
+    if (entityId == null) return { kind: "deepen" };
+    const e = ents.find((x) => x.id === entityId);
+    if (e && e.id !== current.id) return { kind: "concept", entityId: e.id, name: e.name };
+    return { kind: "deepen" }; // anchored to the current concept (or a bad id) -> stay
+  }
+  return { kind: "gap" }; // off_topic
+}
+
 const STOP = new Set([
   "the", "a", "an", "of", "to", "in", "on", "is", "are", "and", "or", "for",
   "why", "how", "when", "what", "does", "do", "with", "about", "between",

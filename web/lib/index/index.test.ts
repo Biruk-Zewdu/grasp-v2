@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { keywordRoute } from "./keyword";
+import { keywordRoute, routeFromIntent } from "./keyword";
 import type { EntityRecord } from "@/lib/db/records";
 
 const ent = (id: number, name: string): EntityRecord => ({
@@ -49,5 +49,43 @@ describe("keywordRoute — follow-up routing (deterministic fallback)", () => {
   it("two shared significant tokens is enough to switch", () => {
     const r = keywordRoute("tell me about critical technical practice", ENTS, CURRENT);
     expect(r).toEqual({ kind: "concept", entityId: 3, name: "critical technical practice" });
+  });
+});
+
+describe("routeFromIntent — Re-register (SERVE_DESIGN §8)", () => {
+  it("a clarification deepens the current concept", () => {
+    expect(routeFromIntent("follow_up", null, ENTS, CURRENT)).toEqual({ kind: "deepen" });
+  });
+
+  it("an objection deepens (surfaces the why / rival side), never switches away", () => {
+    expect(routeFromIntent("objection", null, ENTS, CURRENT)).toEqual({ kind: "deepen" });
+  });
+
+  it("naming a different concept switches", () => {
+    expect(routeFromIntent("new_concept", 4, ENTS, CURRENT)).toEqual({
+      kind: "concept",
+      entityId: 4,
+      name: "credit assignment",
+    });
+  });
+
+  it("a situation indexes to the concept the model anchored it to", () => {
+    expect(routeFromIntent("situation", 3, ENTS, CURRENT)).toEqual({
+      kind: "concept",
+      entityId: 3,
+      name: "critical technical practice",
+    });
+  });
+
+  it("a situation that anchors to nothing stays put (deepen), never fabricates a jump", () => {
+    expect(routeFromIntent("situation", null, ENTS, CURRENT)).toEqual({ kind: "deepen" });
+  });
+
+  it("off_topic falls out of the corpus", () => {
+    expect(routeFromIntent("off_topic", null, ENTS, CURRENT)).toEqual({ kind: "gap" });
+  });
+
+  it("naming the current concept stays (deepen, no pointless re-render)", () => {
+    expect(routeFromIntent("new_concept", 1, ENTS, CURRENT)).toEqual({ kind: "deepen" });
   });
 });

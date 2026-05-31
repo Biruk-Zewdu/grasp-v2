@@ -1,10 +1,17 @@
 import "server-only";
 import { structuredCall } from "@/lib/server/model";
 import { getEntitiesForVersion } from "@/lib/db/records";
-import { keywordMatch, keywordRoute, type GoalMatch, type AskRoute } from "./keyword";
+import {
+  keywordMatch,
+  keywordRoute,
+  routeFromIntent,
+  type GoalMatch,
+  type AskRoute,
+  type AskIntent,
+} from "./keyword";
 
-export { keywordMatch, keywordRoute };
-export type { GoalMatch, AskRoute };
+export { keywordMatch, keywordRoute, routeFromIntent };
+export type { GoalMatch, AskRoute, AskIntent };
 
 /** Goal/ask text -> a target concept id. Model (Sonnet, cached concept list)
  *  when live; otherwise the keyword fallback. Never fabricates: returns {gap}
@@ -69,31 +76,36 @@ export async function routeAsk(
   }
 
   const conceptList = ents.map((e) => `${e.id}: ${e.name}`).join("\n");
-  const model = await structuredCall<{
-    intent: "follow_up" | "new_concept" | "off_topic";
-    entityId: number | null;
-  }>({
+  const model = await structuredCall<{ intent: AskIntent; entityId: number | null }>({
     sessionId,
     role: "classify",
     cacheSystem: true,
     system:
       `The learner is currently reading about "${current.name}". They typed a message ` +
-      `in the follow-up box. Classify the intent:\n` +
+      `in the follow-up box. Classify the intent (registration — SERVE_DESIGN §8):\n` +
       `- "follow_up": a clarification or request to go deeper on the CURRENT concept ` +
-      `(e.g. "I don't get it", "explain by example", "why?", "say more"). Prefer this ` +
-      `for any vague, meta, or clarifying message.\n` +
-      `- "new_concept": they clearly want a DIFFERENT specific concept from the list — ` +
-      `set entityId to that concept's id.\n` +
-      `- "off_topic": a new topic that is NOT in the list.\n` +
-      `Only choose new_concept when the message clearly names another concept; when in ` +
-      `doubt prefer follow_up.\n\nCONCEPTS:\n` +
+      `("I don't get it", "explain by example", "why?", "say more"). Prefer this for any ` +
+      `vague, meta, or clarifying message.\n` +
+      `- "objection": they push back on or doubt the current idea ("but isn't more data ` +
+      `always better?", "that can't be right because…"). Stays on the current concept to ` +
+      `surface the why / the rival side.\n` +
+      `- "new_concept": they clearly want a DIFFERENT specific concept from the list — set ` +
+      `entityId to it.\n` +
+      `- "situation": they describe their OWN problem/paper/context ("I'm building a ` +
+      `recommender", "in my dataset…"). Set entityId to the single concept from the list ` +
+      `most relevant to it, or null if none fits.\n` +
+      `- "off_topic": a new topic that is NOT in the list and isn't their situation.\n` +
+      `When in doubt between follow_up and new_concept, prefer follow_up.\n\nCONCEPTS:\n` +
       conceptList,
     user: `Message: ${text}`,
     schemaName: "ask_route",
     schema: {
       type: "object",
       properties: {
-        intent: { type: "string", enum: ["follow_up", "new_concept", "off_topic"] },
+        intent: {
+          type: "string",
+          enum: ["follow_up", "objection", "new_concept", "situation", "off_topic"],
+        },
         entityId: { type: ["integer", "null"] },
       },
       required: ["intent", "entityId"],
@@ -102,16 +114,7 @@ export async function routeAsk(
     maxTokens: 50,
   });
 
-  if (model.ok) {
-    const { intent, entityId } = model.data;
-    if (intent === "follow_up") return { kind: "deepen" };
-    if (intent === "new_concept" && entityId != null) {
-      const e = ents.find((x) => x.id === entityId);
-      if (e && e.id !== current.id) return { kind: "concept", entityId: e.id, name: e.name };
-      return { kind: "deepen" }; // named the current concept (or a bad id) -> just deepen
-    }
-    if (intent === "off_topic") return { kind: "gap" };
-  }
+  if (model.ok) return routeFromIntent(model.data.intent, model.data.entityId, ents, current);
   // model off or unusable -> deterministic keyword route (strict switch threshold)
   return keywordRoute(text, ents, current);
 }
