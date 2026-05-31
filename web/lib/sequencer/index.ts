@@ -100,59 +100,99 @@ function conceptProbeFor(graph: SeqGraph, id: number): SeqProbe | undefined {
   return graph.probes.find((p) => p.tensionId === null && p.conceptIds.includes(id));
 }
 
+// A concept stops blocking once grasped OR probed (a missed probe opens depth, it
+// does not trap the learner re-answering the same question).
+function isDone(state: SeqState, id: number): boolean {
+  return state.grasped.includes(id) || state.probed.includes(id);
+}
+
+// The unsurfaced tension in the target's neighbourhood (itself or a directly
+// related concept), or null. The "catch" the learner hasn't met yet.
+function openTension(graph: SeqGraph, state: SeqState): number | null {
+  const seen = new Set(state.seenTensions);
+  const relevant = new Set<number>([state.target, ...(graph.related?.get(state.target) ?? [])]);
+  const t = graph.tensions.find(
+    (x) => !seen.has(x.id) && x.conceptIds.some((c) => relevant.has(c)),
+  );
+  return t ? t.id : null;
+}
+
+/** The learner's gap toward the goal, as a typed vector over the relevant set
+ *  (SERVE_DESIGN §5). The connection table in nextStep reduces these in priority
+ *  order; satisficed() is true when the vector is empty on the spine. */
+export interface Difference {
+  unsettledPrereqs: number[]; // transitive prereqs of the target not yet done
+  targetSeen: boolean; // the target's own briefing has been shown (D0)
+  targetDone: boolean; // the target is grasped or probed (settled)
+  openTensionId: number | null; // an unsurfaced tension in the target's neighbourhood
+}
+
+export function difference(graph: SeqGraph, state: SeqState): Difference {
+  return {
+    unsettledPrereqs: [...transitivePrereqs(graph, state.target)].filter(
+      (p) => !isDone(state, p),
+    ),
+    targetSeen: state.seen.includes(state.target),
+    targetDone: isDone(state, state.target),
+    openTensionId: openTension(graph, state),
+  };
+}
+
+/** Satisfice (SERVE_DESIGN §7): stop when the difference vector is empty on the
+ *  goal's spine — prerequisites settled, the target grasped/probed, and its
+ *  tension surfaced. "Good enough to reason", not "ran out of nodes". */
+export function satisficed(graph: SeqGraph, state: SeqState): boolean {
+  const d = difference(graph, state);
+  return (
+    d.unsettledPrereqs.length === 0 &&
+    d.targetSeen &&
+    d.targetDone &&
+    d.openTensionId === null
+  );
+}
+
+// Which unsettled prerequisite to reduce first: one that is "ready" (its own
+// prereqs settled), most foundational, then lowest id — deterministic.
+function selectPrereq(graph: SeqGraph, state: SeqState, prereqs: number[]): number {
+  const ready = prereqs.filter((p) => directPrereqs(graph, p).every((d) => isDone(state, d)));
+  const pool = ready.length ? ready : prereqs;
+  return [...pool].sort(
+    (a, b) => abstractionRank(graph, b) - abstractionRank(graph, a) || a - b,
+  )[0];
+}
+
 /**
- * The next Step. Order of difference-reduction:
- *  1. an ungrasped prerequisite of the target (foundations first; probe it if it
- *     was already shown but not yet demonstrated),
- *  2. the target's own briefing, then its probe,
- *  3. the nearest unsurfaced tension involving the target,
- *  4. otherwise satisfice (stop).
+ * The next Step: reduce the highest-priority unmet difference via the connection
+ * table (SERVE_DESIGN §6). Forward = the system applying the most valuable
+ * operator across the relevant set. Pure — no model, no network, no clock.
+ *
+ *   unsettled prerequisite  -> Briefing it (Probe it if seen-but-undemonstrated)
+ *   target unseen           -> Briefing the target
+ *   target undemonstrated   -> Probe the target
+ *   open tension            -> the Catch
+ *   nothing left            -> satisfice (stop)
  */
 export function nextStep(graph: SeqGraph, state: SeqState): StepRef {
-  const grasped = new Set(state.grasped);
-  const seen = new Set(state.seen);
-  const probed = new Set(state.probed);
-  const seenTensions = new Set(state.seenTensions);
+  const d = difference(graph, state);
 
-  // A concept stops blocking once grasped OR probed (a missed probe opens depth,
-  // it does not trap the learner re-answering the same question).
-  const done = (id: number) => grasped.has(id) || probed.has(id);
-
-  // 1. unsettled prerequisites
-  const prereqs = [...transitivePrereqs(graph, state.target)].filter((p) => !done(p));
-  if (prereqs.length) {
-    // prefer a prereq that is "ready" (all its own prereqs settled), most
-    // foundational first, then lowest id — deterministic.
-    const ready = prereqs.filter((p) => directPrereqs(graph, p).every((d) => done(d)));
-    const pool = ready.length ? ready : prereqs;
-    const pick = [...pool].sort(
-      (a, b) => abstractionRank(graph, b) - abstractionRank(graph, a) || a - b,
-    )[0];
-
-    if (seen.has(pick) && !probed.has(pick)) {
+  // foundations first — Briefing, or a Probe if already seen but not demonstrated
+  if (d.unsettledPrereqs.length) {
+    const pick = selectPrereq(graph, state, d.unsettledPrereqs);
+    if (state.seen.includes(pick) && !state.probed.includes(pick)) {
       const probe = conceptProbeFor(graph, pick);
       if (probe) return { kind: "probe", probeId: probe.id };
     }
     return { kind: "entity", entityId: pick };
   }
 
-  // 2. the target itself
-  if (!seen.has(state.target)) return { kind: "entity", entityId: state.target };
-  if (!done(state.target)) {
+  if (!d.targetSeen) return { kind: "entity", entityId: state.target };
+
+  if (!d.targetDone) {
     const probe = conceptProbeFor(graph, state.target);
     if (probe) return { kind: "probe", probeId: probe.id };
   }
 
-  // 3. nearest unsurfaced tension involving the target or its neighborhood
-  const relevant = new Set<number>([
-    state.target,
-    ...(graph.related?.get(state.target) ?? []),
-  ]);
-  const tension = graph.tensions.find(
-    (t) => !seenTensions.has(t.id) && t.conceptIds.some((c) => relevant.has(c)),
-  );
-  if (tension) return { kind: "tension", tensionId: tension.id };
+  if (d.openTensionId !== null) return { kind: "tension", tensionId: d.openTensionId };
 
-  // 4. satisfice
   return { kind: "stop" };
 }
