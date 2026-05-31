@@ -1,43 +1,10 @@
 import "server-only";
 import { structuredCall } from "@/lib/server/model";
-import { getEntitiesForVersion, type EntityRecord } from "@/lib/db/records";
+import { getEntitiesForVersion } from "@/lib/db/records";
+import { keywordMatch, keywordRoute, type GoalMatch, type AskRoute } from "./keyword";
 
-export type GoalMatch = { entityId: number; name: string } | { gap: true };
-
-const STOP = new Set([
-  "the", "a", "an", "of", "to", "in", "on", "is", "are", "and", "or", "for",
-  "why", "how", "when", "what", "does", "do", "with", "about", "between",
-  "vs", "versus", "i", "want", "understand", "grasp", "learn", "explain",
-]);
-
-function tokens(s: string): string[] {
-  return s
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, " ")
-    .split(/\s+/)
-    .filter((t) => t.length > 2 && !STOP.has(t));
-}
-
-/** Pure keyword match over the concept list (no model). Substring of a concept
- *  name wins; otherwise the concept with the most shared significant tokens. */
-export function keywordMatch(goal: string, ents: EntityRecord[]): GoalMatch {
-  const g = goal.toLowerCase();
-  const goalTokens = new Set(tokens(goal));
-  let best: { e: EntityRecord; score: number } | null = null;
-
-  for (const e of ents) {
-    const name = e.name.toLowerCase();
-    let score = 0;
-    if (g.includes(name)) score = 100 + name.length; // whole concept name present
-    else {
-      const nameTokens = tokens(e.name);
-      const overlap = nameTokens.filter((t) => goalTokens.has(t)).length;
-      score = overlap * 10;
-    }
-    if (score > 0 && (!best || score > best.score)) best = { e, score };
-  }
-  return best ? { entityId: best.e.id, name: best.e.name } : { gap: true };
-}
+export { keywordMatch, keywordRoute };
+export type { GoalMatch, AskRoute };
 
 /** Goal/ask text -> a target concept id. Model (Sonnet, cached concept list)
  *  when live; otherwise the keyword fallback. Never fabricates: returns {gap}
@@ -78,4 +45,73 @@ export async function classifyGoal(
   }
   // model off, returned null, or hallucinated an id -> deterministic fallback
   return keywordMatch(goal, ents);
+}
+
+/** Route a message typed in the "Ask a follow-up, or set a new goal" box, given
+ *  the concept the learner is currently reading. Unlike classifyGoal this is
+ *  NOT obligated to return a concept: a clarification ("I don't get it", "explain
+ *  by example") stays on the current idea and deepens it, rather than being
+ *  misrouted to its nearest semantic neighbour. Only a message that clearly names
+ *  a DIFFERENT concept switches; a genuinely new off-corpus topic falls to {gap}. */
+export async function routeAsk(
+  text: string,
+  versionId: number,
+  sessionId: string,
+  current: { id: number; name: string } | null,
+): Promise<AskRoute> {
+  const ents = await getEntitiesForVersion(versionId);
+
+  // No current concept (e.g. very first action) — there's nothing to deepen, so
+  // treat it as a fresh goal.
+  if (!current) {
+    const m = await classifyGoal(text, versionId, sessionId);
+    return "gap" in m ? { kind: "gap" } : { kind: "concept", entityId: m.entityId, name: m.name };
+  }
+
+  const conceptList = ents.map((e) => `${e.id}: ${e.name}`).join("\n");
+  const model = await structuredCall<{
+    intent: "follow_up" | "new_concept" | "off_topic";
+    entityId: number | null;
+  }>({
+    sessionId,
+    role: "classify",
+    cacheSystem: true,
+    system:
+      `The learner is currently reading about "${current.name}". They typed a message ` +
+      `in the follow-up box. Classify the intent:\n` +
+      `- "follow_up": a clarification or request to go deeper on the CURRENT concept ` +
+      `(e.g. "I don't get it", "explain by example", "why?", "say more"). Prefer this ` +
+      `for any vague, meta, or clarifying message.\n` +
+      `- "new_concept": they clearly want a DIFFERENT specific concept from the list — ` +
+      `set entityId to that concept's id.\n` +
+      `- "off_topic": a new topic that is NOT in the list.\n` +
+      `Only choose new_concept when the message clearly names another concept; when in ` +
+      `doubt prefer follow_up.\n\nCONCEPTS:\n` +
+      conceptList,
+    user: `Message: ${text}`,
+    schemaName: "ask_route",
+    schema: {
+      type: "object",
+      properties: {
+        intent: { type: "string", enum: ["follow_up", "new_concept", "off_topic"] },
+        entityId: { type: ["integer", "null"] },
+      },
+      required: ["intent", "entityId"],
+      additionalProperties: false,
+    },
+    maxTokens: 50,
+  });
+
+  if (model.ok) {
+    const { intent, entityId } = model.data;
+    if (intent === "follow_up") return { kind: "deepen" };
+    if (intent === "new_concept" && entityId != null) {
+      const e = ents.find((x) => x.id === entityId);
+      if (e && e.id !== current.id) return { kind: "concept", entityId: e.id, name: e.name };
+      return { kind: "deepen" }; // named the current concept (or a bad id) -> just deepen
+    }
+    if (intent === "off_topic") return { kind: "gap" };
+  }
+  // model off or unusable -> deterministic keyword route (strict switch threshold)
+  return keywordRoute(text, ents, current);
 }

@@ -19,6 +19,7 @@ export type Advance = {
   state: GuideState;
   gap?: boolean; // the goal/ask fell outside the corpus
   coverage?: Coverage; // present after a probe answer
+  concept?: string; // a follow-up switched to this concept (breadcrumb label)
 };
 
 export function initialState(sessionId: string): GuideState {

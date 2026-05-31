@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { startGoal, forward, submitProbe, expandSource, goDeeper } from "./actions";
+import { startGoal, ask, forward, submitProbe, expandSource, goDeeper } from "./actions";
 import { initialState, type GuideState, type Coverage } from "@/lib/guide/types";
 import type { Step } from "@/lib/render";
 
@@ -47,6 +47,27 @@ export default function Guide() {
         setState(adv.state);
         setStep(adv.step);
         setTopic(adv.gap ? null : text.trim());
+        setGoal("");
+      } catch {
+        setStep(clientError);
+      }
+    });
+  }
+
+  // The follow-up box: a clarification deepens the current concept (breadcrumb
+  // unchanged); a clearly-named different concept switches (breadcrumb updates to
+  // the concept name); an off-corpus topic shows the gap Step (breadcrumb clears).
+  function onAsk(text: string) {
+    if (!text.trim()) return;
+    reset();
+    start(async () => {
+      try {
+        const adv = await ask(state, text);
+        setState(adv.state);
+        setStep(adv.step);
+        if (adv.gap) setTopic(null);
+        else if (adv.concept) setTopic(adv.concept);
+        // deepen: keep the current topic
         setGoal("");
       } catch {
         setStep(clientError);
@@ -191,7 +212,7 @@ export default function Guide() {
             <GoalBox
               value={goal}
               onChange={setGoal}
-              onSubmit={() => onGoal(goal)}
+              onSubmit={() => onAsk(goal)}
               pending={pending}
               placeholder="Ask a follow-up, or set a new goal…"
             />

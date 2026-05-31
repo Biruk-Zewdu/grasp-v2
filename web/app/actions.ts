@@ -18,7 +18,7 @@ import {
   type Step,
   type ModelUsage,
 } from "@/lib/render";
-import { classifyGoal } from "@/lib/index";
+import { classifyGoal, routeAsk } from "@/lib/index";
 import { checkProbe } from "@/lib/probe";
 import { getUserId } from "@/lib/server/identity";
 import { logGap, logGesture } from "@/lib/server/log";
@@ -143,6 +143,41 @@ export async function startGoal(state: GuideState, goal: string): Promise<Advanc
     const { step: s, next } = await step(userId, v.id, { ...loaded, target: match.entityId }, "goal");
     await saveProgress(userId, v.id, next);
     return { step: s, state: toState(state.sessionId, next) };
+  } catch {
+    return { step: errorStep(), state };
+  }
+}
+
+/** Handle the "Ask a follow-up, or set a new goal" box. Unlike startGoal this is
+ *  aware of the concept being read: a clarification deepens the CURRENT idea
+ *  instead of being re-classified into the nearest neighbour; only a clearly-named
+ *  different concept switches; a genuinely off-corpus topic logs a gap. */
+export async function ask(state: GuideState, text: string): Promise<Advance> {
+  try {
+    const userId = await getUserId(state.sessionId);
+    const v = await frozenVersion(SERVE_CORPUS_VERSION);
+    if (!v) return { step: noVersionStep(), state };
+
+    const loaded = await loadProgress(userId, toProgress(state));
+    const current = loaded.target != null ? await getEntity(loaded.target) : null;
+    const route = await routeAsk(
+      text,
+      v.id,
+      userId,
+      current ? { id: current.id, name: current.name } : null,
+    );
+
+    if (route.kind === "deepen") {
+      // Stay on the current concept and pull its tension (or move on if none left).
+      return goDeeper(toState(state.sessionId, loaded), loaded.target!);
+    }
+    if (route.kind === "gap") {
+      await logGap(text, userId, v.id);
+      return { step: gapStep(text), state, gap: true };
+    }
+    const { step: s, next } = await step(userId, v.id, { ...loaded, target: route.entityId }, "goal");
+    await saveProgress(userId, v.id, next);
+    return { step: s, state: toState(state.sessionId, next), concept: route.name };
   } catch {
     return { step: errorStep(), state };
   }
