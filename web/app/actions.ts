@@ -23,9 +23,10 @@ export async function turn(
 ): Promise<AnswerCard> {
   const base: AnswerCard = {
     question,
-    framing: question,
-    prose: "",
+    headline: null,
+    reply: "",
     table: null,
+    branches: [],
     sourceConceptIds: [],
     outOfScope: false,
   };
@@ -33,7 +34,7 @@ export async function turn(
   try {
     const userId = await getUserId(sessionId);
     const v = await frozenVersion(SERVE_CORPUS_VERSION);
-    if (!v) return { ...base, prose: "No frozen corpus is available.", outOfScope: true };
+    if (!v) return { ...base, reply: "No frozen corpus is available.", outOfScope: true };
 
     const t0 = Date.now();
     const answer = await runTurn(question, history, v.id, userId);
@@ -63,15 +64,16 @@ export async function turn(
 
     return {
       question,
-      framing: answer.framing,
-      prose: answer.prose,
+      headline: answer.headline,
+      reply: answer.reply,
       table,
+      branches: answer.branches,
       sourceConceptIds: answer.sourceConceptIds,
       outOfScope: answer.outOfScope,
       glossary,
     };
   } catch {
-    return { ...base, prose: "That didn't go through. Try again, or rephrase your question." };
+    return { ...base, reply: "That didn't go through. Try again, or rephrase your question." };
   }
 }
 
@@ -84,9 +86,10 @@ export async function basics(
 ): Promise<AnswerCard> {
   const base: AnswerCard = {
     question: `Start from the basics: ${topic}`,
-    framing: `Building up to: ${topic}`,
-    prose: "",
+    headline: `Building up to: ${topic}`,
+    reply: "",
     table: null,
+    branches: [],
     sourceConceptIds: [],
     outOfScope: false,
   };
@@ -114,9 +117,9 @@ export async function basics(
       tokens: null,
     });
 
-    return { ...base, framing: result.framing, prose: result.prose, path };
+    return { ...base, headline: result.headline, reply: result.reply, path };
   } catch {
-    return { ...base, prose: "Couldn't build the basics path. Try again." };
+    return { ...base, reply: "Couldn't build the basics path. Try again." };
   }
 }
 

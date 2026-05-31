@@ -1,67 +1,101 @@
 import "server-only";
 import { structuredCall } from "@/lib/server/model";
 import { getArtifactContext, getEntitiesForVersion } from "@/lib/db/records";
+import type { Branch } from "@/lib/guide/types";
 import { rankByOverlap } from "./retrieve";
 
-// The agentic Guide. GPT is the reasoner: it FRAMES the learner's question and
-// answers it, grounded in the whole frozen artifact (small enough to sit in a
-// cached system prompt). The course values are its constitution. No deterministic
-// sequencer. (SERVE_DESIGN — agentic rebuild.)
+// The agentic Guide. GPT is the reasoner: it answers the learner's actual question,
+// grounded in the whole frozen artifact (small enough to sit in a cached system
+// prompt). The course values are its constitution. No deterministic sequencer.
+//
+// The response is ONE free-form `reply` plus zero or more grounded attachments
+// (SERVE_DESIGN §3a). We deliberately do NOT prescribe a shape or enumerate "moves"
+// — clarify / orient / answer all emerge from which attachments are present, so a
+// reflex framing+tension no longer makes every reply look the same.
 
 export type AgentAnswer = {
-  framing: string; // restates the crux of the user's question
-  prose: string; // the grounded answer
-  tensionId: number | null; // a real tension to render verbatim, if one applies
+  reply: string; // free-form: an answer, a question, or an orientation — whatever fits
+  headline: string | null; // optional short title for the heading / outline
+  tensionId: number | null; // ONE tension to render verbatim — only when central & contested
+  branches: Branch[]; // ask-back / forward / offer-basics option-chips
   sourceConceptIds: number[]; // concepts grounded on (for the provenance pull)
-  keyTermIds: number[]; // concept ids mentioned in the prose, for inline glossing
+  keyTermIds: number[]; // concept ids named in the reply, for inline glossing
   outOfScope: boolean; // the artifact doesn't cover this — say so, don't fabricate
 };
 
 // A foundations ladder for "start from the basics" (SERVE_DESIGN §7a-a).
 export type BasicsPath = {
-  framing: string;
-  prose: string;
+  headline: string;
+  reply: string;
   basics: { conceptId: number; why: string }[];
 };
 
 const CONSTITUTION =
   "You are Grasp — a guide that helps a learner understand AI ideas, grounded in a curated, " +
   "course-built knowledge artifact (given below). Follow these rules without exception:\n" +
-  "1. FIRST FRAME the learner's actual question — what are they really asking? — then ANSWER it " +
-  "directly and concretely. Do not just recite a definition.\n" +
-  "2. GROUND every factual claim in the artifact's concepts, tensions, and claims. If the " +
-  "artifact does not cover the question, set outOfScope=true and say so — never invent facts, " +
-  "names, or numbers from outside it.\n" +
-  "3. When the answer is genuinely contested, set tensionId to ONE relevant tension id from the " +
-  "artifact and let the system render both sides — never resolve it, never pick a winner, never " +
-  "write the two sides yourself in prose.\n" +
-  "4. Be concise (a short briefing, not an essay). Use the course's framing: the " +
-  "Simon/Minsky/McCarthy symbolic view is the lens; the rival deep-learning view is content " +
-  "inside a tension, never the verdict.\n" +
-  "5. Set sourceConceptIds to the concept ids you grounded the answer on.\n" +
-  "6. Set keyTermIds to the ids of artifact concepts you actually NAME in the prose that a " +
-  "learner might want defined inline (use the concept's exact name in the prose so it can be " +
-  "glossed).\n";
+  "1. ANSWER THE QUESTION, NOT A RITUAL. A crisp question gets a DIRECT answer — no 'so you're " +
+  "asking…' preamble; reframe only when it genuinely clarifies. For a VAGUE goal or ambiguous " +
+  "input, do not guess: orient briefly and offer `branches` (real next questions) instead. Your " +
+  "`reply` is one free-form passage; let its shape follow the input.\n" +
+  "2. GROUND OR ABSTAIN. Every factual claim must rest on the artifact's concepts, claims, and " +
+  "tensions. If the artifact does not cover it, set outOfScope=true and say so — never invent " +
+  "facts, names, or numbers. When orienting a goal the corpus only partly covers, you may add at " +
+  "most ONE bridging sentence from general knowledge, clearly marked as a bridge and honest that " +
+  "this is a foundations corpus — but only TEACH what is grounded.\n" +
+  "3. PRESERVE TENSIONS, DON'T REACH FOR THEM. Set tensionId to ONE relevant tension id ONLY when " +
+  "the answer is genuinely contested AND that contest is central — never by reflex. The system " +
+  "renders both sides verbatim; never resolve it, pick a winner, or write the two sides yourself.\n" +
+  "4. BRANCHES LEAD HOME. Each branch is {label, ask} where `ask` is a real next question that " +
+  "lands on teachable corpus territory. Use them three ways: ask back on a vague goal; end an " +
+  "answer with 1-2 FORWARD branches (momentum, not interrogation); or OFFER 'build up from the " +
+  "basics?' when the learner reaches past foundations they lack. Always an offer, never forced. " +
+  "Return [] when none help.\n" +
+  "5. THE COURSE LENS. The Simon/Minsky/McCarthy symbolic view is the lens; the rival " +
+  "deep-learning view is content inside a tension, never the verdict. Be concise — a briefing, " +
+  "not an essay.\n" +
+  "6. CITE. Set sourceConceptIds to the concept ids you grounded on, and keyTermIds to the ids of " +
+  "artifact concepts you NAME in the reply that a learner might want defined inline (use the " +
+  "concept's exact name in the reply so it can be glossed). Set headline to a short title, or " +
+  "null when the reply needs no heading.\n";
+
+const BRANCH_SCHEMA = {
+  type: "array",
+  items: {
+    type: "object",
+    properties: { label: { type: "string" }, ask: { type: "string" } },
+    required: ["label", "ask"],
+    additionalProperties: false,
+  },
+} as const;
 
 const ANSWER_SCHEMA = {
   type: "object",
   properties: {
-    framing: { type: "string" },
-    prose: { type: "string" },
+    reply: { type: "string" },
+    headline: { type: ["string", "null"] },
     tensionId: { type: ["integer", "null"] },
+    branches: BRANCH_SCHEMA,
     sourceConceptIds: { type: "array", items: { type: "integer" } },
     keyTermIds: { type: "array", items: { type: "integer" } },
     outOfScope: { type: "boolean" },
   },
-  required: ["framing", "prose", "tensionId", "sourceConceptIds", "keyTermIds", "outOfScope"],
+  required: [
+    "reply",
+    "headline",
+    "tensionId",
+    "branches",
+    "sourceConceptIds",
+    "keyTermIds",
+    "outOfScope",
+  ],
   additionalProperties: false,
 } as const;
 
 const BASICS_SCHEMA = {
   type: "object",
   properties: {
-    framing: { type: "string" },
-    prose: { type: "string" },
+    headline: { type: "string" },
+    reply: { type: "string" },
     basics: {
       type: "array",
       items: {
@@ -72,7 +106,7 @@ const BASICS_SCHEMA = {
       },
     },
   },
-  required: ["framing", "prose", "basics"],
+  required: ["headline", "reply", "basics"],
   additionalProperties: false,
 } as const;
 
@@ -102,9 +136,10 @@ export async function runTurn(
   if (res.ok) {
     const a = res.data;
     return {
-      framing: a.framing?.trim() || question,
-      prose: a.prose?.trim() || "",
+      reply: a.reply?.trim() || "",
+      headline: a.headline?.trim() || null,
       tensionId: a.tensionId,
+      branches: (a.branches ?? []).filter((b) => b.label?.trim() && b.ask?.trim()),
       sourceConceptIds: a.sourceConceptIds ?? [],
       keyTermIds: a.keyTermIds ?? [],
       outOfScope: a.outOfScope,
@@ -118,9 +153,10 @@ export async function runTurn(
   const top = rankByOverlap(question, items, 1)[0];
   const e = top != null ? ents.find((x) => x.id === top) : undefined;
   return {
-    framing: question,
-    prose: e?.definition ?? "",
+    reply: e?.definition ?? "",
+    headline: e?.name ?? null,
     tensionId: null,
+    branches: [],
     sourceConceptIds: e ? [e.id] : [],
     keyTermIds: e ? [e.id] : [],
     outOfScope: !e,
@@ -155,10 +191,10 @@ export async function runBasics(
   });
   if (res.ok) {
     return {
-      framing: res.data.framing?.trim() || `Building up to: ${topic}`,
-      prose: res.data.prose?.trim() || "",
+      headline: res.data.headline?.trim() || `Building up to: ${topic}`,
+      reply: res.data.reply?.trim() || "",
       basics: res.data.basics ?? [],
     };
   }
-  return { framing: `Building up to: ${topic}`, prose: "", basics: [] };
+  return { headline: `Building up to: ${topic}`, reply: "", basics: [] };
 }

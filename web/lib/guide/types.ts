@@ -15,16 +15,25 @@ export type GlossTerm = { id: number; term: string; definition: string };
 // learner climbs, with one line on why it matters.
 export type PathRung = { id: number; name: string; why: string };
 
-// One answer in the conversation. The agent FRAMES the question and answers it,
-// grounded in the artifact; a pinned tension renders verbatim (cells never written
-// by the model); sources pull provenance for the concepts it grounded on.
+// An option-chip the agent attaches to a turn (SERVE_DESIGN §3a/§4): a real next
+// question that lands on teachable corpus territory. Three uses, one field — ask
+// back on a vague goal, offer 1-2 forward steps after an answer, or offer the
+// basics ladder. Clicking it is just a normal turn.
+export type Branch = { label: string; ask: string };
+
+// One turn in the conversation (SERVE_DESIGN §3a). The agent returns one free-form
+// `reply` — an answer, a question, or an orientation, whatever the input calls for —
+// plus zero or more grounded attachments: an optional `headline`, branch chips, a
+// verbatim tension table, sources, inline-glossed key terms. The shape is not
+// prescribed; diversity emerges from which attachments are present.
 export type AnswerCard = {
   question: string;
-  framing: string;
-  prose: string;
-  table: TensionTable | null;
+  headline: string | null; // optional short title for the heading / outline
+  reply: string;
+  table: TensionTable | null; // a pinned tension, rendered verbatim (cells never the model's)
+  branches: Branch[]; // ask-back / forward / offer-basics chips
   sourceConceptIds: number[];
   outOfScope: boolean;
-  glossary?: GlossTerm[]; // key terms in the prose, hover-glossed
+  glossary?: GlossTerm[]; // key terms in the reply, hover-glossed
   path?: PathRung[]; // a foundations ladder (when this card is a "start from the basics")
 };

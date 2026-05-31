@@ -37,7 +37,7 @@ export default function Guide({ catalog }: { catalog: Catalog }) {
   function history(): string {
     return thread
       .slice(-4)
-      .map((c) => `You: ${c.question}\nGuide: ${c.framing} ${c.prose}`)
+      .map((c) => `You: ${c.question}\nGuide: ${c.headline ? c.headline + ". " : ""}${c.reply}`)
       .join("\n\n");
   }
 
@@ -126,8 +126,9 @@ export default function Guide({ catalog }: { catalog: Catalog }) {
           <div className="m-auto max-w-md space-y-3 text-center">
             <p className="text-sm text-neutral-700">Ask anything about AI ideas.</p>
             <p className="text-xs text-neutral-400">
-              Pick a big question or a key idea on the left, or type on the right. You get a framed,
-              grounded answer — with the tension preserved. Everything stays here as you go.
+              Pick a big question or a key idea on the left, or type on the right. You get a direct,
+              grounded answer — with the tension preserved where it matters. Everything stays here as
+              you go.
             </p>
           </div>
         ) : (
@@ -204,8 +205,16 @@ export default function Guide({ catalog }: { catalog: Catalog }) {
   );
 }
 
-function fallbackCard(question: string, prose: string): AnswerCard {
-  return { question, framing: question, prose, table: null, sourceConceptIds: [], outOfScope: false };
+function fallbackCard(question: string, reply: string): AnswerCard {
+  return {
+    question,
+    headline: null,
+    reply,
+    table: null,
+    branches: [],
+    sourceConceptIds: [],
+    outOfScope: false,
+  };
 }
 
 function Turn({
@@ -244,10 +253,10 @@ function Turn({
       <p className="text-xs text-neutral-400">
         You asked: <span className="text-neutral-600">{card.question}</span>
       </p>
-      {card.framing && card.framing !== card.question && (
-        <h2 className="text-lg font-semibold leading-snug text-neutral-900">{card.framing}</h2>
+      {card.headline && card.headline !== card.question && (
+        <h2 className="text-lg font-semibold leading-snug text-neutral-900">{card.headline}</h2>
       )}
-      {card.prose && <Prose text={card.prose} glossary={card.glossary ?? []} onExplore={onExplore} />}
+      {card.reply && <Prose text={card.reply} glossary={card.glossary ?? []} onExplore={onExplore} />}
 
       {card.path && card.path.length > 0 && (
         <ol className="space-y-2">
@@ -282,6 +291,21 @@ function Turn({
       )}
 
       {source && <SourceBlock passages={source} />}
+
+      {card.branches.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {card.branches.map((b, n) => (
+            <button
+              key={n}
+              onClick={() => onAction(b.ask)}
+              disabled={pending}
+              className="rounded-full border border-neutral-300 bg-neutral-50 px-3 py-1.5 text-xs text-neutral-700 hover:border-neutral-400 hover:bg-neutral-100 disabled:opacity-40"
+            >
+              {b.label} <span aria-hidden className="text-neutral-400">→</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2 border-t border-neutral-100 pt-4">
         {last && (
