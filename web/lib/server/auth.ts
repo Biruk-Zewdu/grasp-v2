@@ -1,10 +1,18 @@
 import "server-only";
+import { createSupabaseServer } from "@/lib/supabase/server";
 
-// Anonymous-auth seam. Returns the verified Supabase anon-auth uid from the
-// request's session cookie, or null when auth isn't configured (template/dev) or
-// no session exists. Implemented for real in the auth slice once @supabase/ssr +
-// the NEXT_PUBLIC_SUPABASE_* env are present; until then it returns null so the
-// caller falls back to the client session uuid (see identity.ts).
+// The verified anon-auth uid for this request, from the session cookie. Uses
+// getUser() (which validates the JWT with the auth server) — not getSession,
+// which would trust an unverified cookie. Returns null when auth isn't
+// configured or no session exists, so the caller falls back to the client
+// session uuid (see identity.ts).
 export async function verifiedUserId(): Promise<string | null> {
-  return null;
+  try {
+    const supabase = await createSupabaseServer();
+    if (!supabase) return null;
+    const { data } = await supabase.auth.getUser();
+    return data.user?.id ?? null;
+  } catch {
+    return null;
+  }
 }

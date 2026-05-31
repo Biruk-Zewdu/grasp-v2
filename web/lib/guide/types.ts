@@ -24,13 +24,3 @@ export type Advance = {
 export function initialState(sessionId: string): GuideState {
   return { sessionId, target: null, seen: [], grasped: [], probed: [], seenTensions: [] };
 }
-
-const uniq = (xs: number[]) => [...new Set(xs)];
-export const withSeen = (s: GuideState, id: number): GuideState => ({
-  ...s,
-  seen: uniq([...s.seen, id]),
-});
-export const withSeenTension = (s: GuideState, id: number): GuideState => ({
-  ...s,
-  seenTensions: uniq([...s.seenTensions, id]),
-});
