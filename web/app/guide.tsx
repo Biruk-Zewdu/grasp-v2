@@ -141,6 +141,27 @@ export default function Guide({ catalog }: { catalog: Catalog }) {
           </div>
         ) : (
           <article className="mx-auto w-full max-w-2xl space-y-5">
+            {thread.length > 1 && active != null && (
+              <div className="flex items-center gap-3 text-xs text-neutral-400">
+                <button
+                  onClick={() => setActive(Math.max(0, active - 1))}
+                  disabled={active === 0}
+                  className="rounded-md px-2 py-1 hover:bg-neutral-100 disabled:opacity-30"
+                >
+                  ← Back
+                </button>
+                <span className="tabular-nums">
+                  {active + 1} / {thread.length}
+                </span>
+                <button
+                  onClick={() => setActive(Math.min(thread.length - 1, active + 1))}
+                  disabled={active === thread.length - 1}
+                  className="rounded-md px-2 py-1 hover:bg-neutral-100 disabled:opacity-30"
+                >
+                  Next →
+                </button>
+              </div>
+            )}
             <p className="text-xs text-neutral-400">
               You asked: <span className="text-neutral-600">{current.question}</span>
             </p>
