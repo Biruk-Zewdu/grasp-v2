@@ -42,10 +42,18 @@ def _conn():
 def _get_or_create_cv(cur, label: str) -> int:
     cur.execute(
         "insert into corpus_version (label) values (%s) "
-        "on conflict (label) do update set label = excluded.label returning id",
+        "on conflict (label) do update set label = excluded.label "
+        "returning id, frozen_at",
         (label,),
     )
-    return cur.fetchone()[0]
+    cv, frozen = cur.fetchone()
+    if frozen is not None:
+        # I5: a frozen version is immutable. To fix it, clone -> edit -> re-freeze.
+        raise SystemExit(
+            f"corpus_version '{label}' is frozen ({frozen}); refusing to write. "
+            f"Use db/freeze.py clone to cut a new draft (the v1.1 path)."
+        )
+    return cv
 
 
 # --------------------------------------------------------------------------- #
