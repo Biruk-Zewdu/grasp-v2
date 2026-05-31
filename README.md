@@ -15,7 +15,8 @@ The design rationale and the build playbook live in the parent workspace (one le
 
 | Path | Role |
 |---|---|
-| `db/` | SQL migrations (the schema **source of truth**) + load helpers |
+| `supabase/` | Supabase config + `migrations/` (SQL = the schema **source of truth**) |
+| `db/` | loader / seed helpers — Python |
 | `schemas/` | Pydantic models that mirror the DDL — Python |
 | `build/` | The M1 artifact: agent-produced records + `validate`/`load` |
 | `web/` | Next.js app — sequencer, renderer, index, UI, admin |
