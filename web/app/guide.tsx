@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { turn, basics, expandSources } from "./actions";
 import type { AnswerCard, Catalog, GlossTerm } from "@/lib/guide/types";
 import type { TensionTable } from "@/lib/render";
@@ -23,6 +23,16 @@ export default function Guide({ catalog }: { catalog: Catalog }) {
   const [sources, setSources] = useState<Record<number, string[]>>({});
   const [input, setInput] = useState("");
   const [pending, start] = useTransition();
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  // The session flows: when a new answer arrives, scroll it into view. Nothing is
+  // ever paged away — the whole transcript stays, scrollable (a tutor session).
+  useEffect(() => {
+    if (thread.length) {
+      setActive(thread.length - 1);
+      bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    }
+  }, [thread.length]);
 
   function history(): string {
     return thread
@@ -31,29 +41,32 @@ export default function Guide({ catalog }: { catalog: Catalog }) {
       .join("\n\n");
   }
 
+  function push(card: AnswerCard) {
+    setThread((t) => [...t, card]);
+  }
+
   function send(q: string) {
     if (!q.trim() || pending) return;
     const h = history();
     setInput("");
     start(async () => {
-      let card: AnswerCard;
       try {
-        card = await turn(sessionId, q, h);
+        push(await turn(sessionId, q, h));
       } catch {
-        card = {
-          question: q,
-          framing: q,
-          prose: "That didn't reach the server. Check your connection and try again.",
-          table: null,
-          sourceConceptIds: [],
-          outOfScope: false,
-        };
+        push(fallbackCard(q, "That didn't reach the server. Check your connection and try again."));
       }
-      setThread((t) => {
-        const nt = [...t, card];
-        setActive(nt.length - 1);
-        return nt;
-      });
+    });
+  }
+
+  function startBasics(topic: string) {
+    if (!topic.trim() || pending) return;
+    const h = history();
+    start(async () => {
+      try {
+        push(await basics(sessionId, topic, h));
+      } catch {
+        push(fallbackCard(`Start from the basics: ${topic}`, "That didn't reach the server."));
+      }
     });
   }
 
@@ -64,32 +77,10 @@ export default function Guide({ catalog }: { catalog: Catalog }) {
     });
   }
 
-  function startBasics(topic: string) {
-    if (!topic.trim() || pending) return;
-    const h = history();
-    start(async () => {
-      let card: AnswerCard;
-      try {
-        card = await basics(sessionId, topic, h);
-      } catch {
-        card = {
-          question: `Start from the basics: ${topic}`,
-          framing: `Building up to: ${topic}`,
-          prose: "That didn't reach the server. Try again.",
-          table: null,
-          sourceConceptIds: [],
-          outOfScope: false,
-        };
-      }
-      setThread((t) => {
-        const nt = [...t, card];
-        setActive(nt.length - 1);
-        return nt;
-      });
-    });
+  function jumpTo(i: number) {
+    setActive(i);
+    document.getElementById(`turn-${i}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
-
-  const current = active != null ? thread[active] : null;
 
   return (
     <main className="grid h-dvh grid-cols-1 divide-neutral-200 lg:grid-cols-[260px_1fr_340px] lg:divide-x">
@@ -129,126 +120,60 @@ export default function Guide({ catalog }: { catalog: Catalog }) {
         </Section>
       </aside>
 
-      {/* MIDDLE — Answer canvas */}
+      {/* MIDDLE — Session transcript */}
       <section className="flex flex-col overflow-y-auto p-6 lg:p-10">
-        {!current ? (
+        {thread.length === 0 ? (
           <div className="m-auto max-w-md space-y-3 text-center">
             <p className="text-sm text-neutral-700">Ask anything about AI ideas.</p>
             <p className="text-xs text-neutral-400">
-              Pick a big question or a key idea on the left, or type a question on the right.
-              You get a framed, grounded answer — with the tension preserved.
+              Pick a big question or a key idea on the left, or type on the right. You get a framed,
+              grounded answer — with the tension preserved. Everything stays here as you go.
             </p>
           </div>
         ) : (
-          <article className="mx-auto w-full max-w-2xl space-y-5">
-            {thread.length > 1 && active != null && (
-              <div className="flex items-center gap-3 text-xs text-neutral-400">
-                <button
-                  onClick={() => setActive(Math.max(0, active - 1))}
-                  disabled={active === 0}
-                  className="rounded-md px-2 py-1 hover:bg-neutral-100 disabled:opacity-30"
-                >
-                  ← Back
-                </button>
-                <span className="tabular-nums">
-                  {active + 1} / {thread.length}
-                </span>
-                <button
-                  onClick={() => setActive(Math.min(thread.length - 1, active + 1))}
-                  disabled={active === thread.length - 1}
-                  className="rounded-md px-2 py-1 hover:bg-neutral-100 disabled:opacity-30"
-                >
-                  Next →
-                </button>
-              </div>
-            )}
-            <p className="text-xs text-neutral-400">
-              You asked: <span className="text-neutral-600">{current.question}</span>
-            </p>
-            {current.framing && current.framing !== current.question && (
-              <h2 className="text-lg font-semibold leading-snug text-neutral-900">
-                {current.framing}
-              </h2>
-            )}
-            {current.prose && (
-              <Prose
-                text={current.prose}
-                glossary={current.glossary ?? []}
+          <div className="mx-auto w-full max-w-2xl space-y-8">
+            {thread.map((c, i) => (
+              <Turn
+                key={i}
+                id={`turn-${i}`}
+                card={c}
+                active={i === active}
+                last={i === thread.length - 1}
+                source={sources[i] ?? null}
+                pending={pending}
                 onExplore={(term) => send(`What is ${term}, and why does it matter?`)}
+                onRung={(name) => send(`What is ${name}, and why does it matter?`)}
+                onAction={(q) => send(q)}
+                onBasics={() => startBasics(c.question)}
+                onSource={() => showSource(i, c.sourceConceptIds)}
               />
-            )}
-            {current.path && current.path.length > 0 && (
-              <ol className="space-y-2">
-                {current.path.map((r, n) => (
-                  <li key={r.id}>
-                    <button
-                      onClick={() => send(`What is ${r.name}, and why does it matter?`)}
-                      disabled={pending}
-                      className="block w-full rounded-xl border border-neutral-200 p-3 text-left hover:border-neutral-400 disabled:opacity-50"
-                    >
-                      <span className="text-sm font-medium text-neutral-900">
-                        {n + 1}. {r.name}
-                      </span>
-                      <span className="block text-xs leading-snug text-neutral-500">{r.why}</span>
-                    </button>
-                  </li>
-                ))}
-              </ol>
-            )}
-            {current.outOfScope && (
-              <p className="rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-600">
-                That's at the edge of this corpus — try a topic from the AI-foundations sessions.
-              </p>
-            )}
-            {current.table && (
-              <div className="space-y-1.5">
-                <Label>Two views — it depends</Label>
-                <TensionGrid table={current.table} />
-              </div>
-            )}
-            {active != null && sources[active] && <SourceBlock passages={sources[active]} />}
-
-            <div className="flex flex-wrap gap-2 border-t border-neutral-100 pt-4">
-              <ActionBtn onClick={() => startBasics(current.question)} disabled={pending}>
-                Start from the basics
-              </ActionBtn>
-              {ACTIONS.map((a) => (
-                <ActionBtn key={a.label} onClick={() => send(a.q)} disabled={pending}>
-                  {a.label}
-                </ActionBtn>
-              ))}
-              {current.sourceConceptIds.length > 0 && active != null && !sources[active] && (
-                <ActionBtn onClick={() => showSource(active, current.sourceConceptIds)} disabled={pending}>
-                  Show the source
-                </ActionBtn>
-              )}
-            </div>
-          </article>
-        )}
-        {pending && (
-          <p className="mx-auto mt-4 w-full max-w-2xl text-xs text-neutral-400">Thinking…</p>
+            ))}
+            {pending && <p className="text-xs text-neutral-400">Thinking…</p>}
+            <div ref={bottomRef} />
+          </div>
         )}
       </section>
 
-      {/* RIGHT — Conversation */}
+      {/* RIGHT — Conversation outline + ask */}
       <aside className="flex max-h-dvh flex-col border-t border-neutral-200 p-5 lg:border-t-0">
-        <Label>Conversation</Label>
-        <div className="mt-3 flex-1 space-y-2 overflow-y-auto">
+        <Label>Your session</Label>
+        <div className="mt-3 flex-1 space-y-1.5 overflow-y-auto">
           {thread.length === 0 ? (
             <p className="text-xs text-neutral-400">Ask a question to start.</p>
           ) : (
             thread.map((c, i) => (
               <button
                 key={i}
-                onClick={() => setActive(i)}
+                onClick={() => jumpTo(i)}
                 className={
-                  "block w-full rounded-lg border p-2.5 text-left text-xs leading-snug " +
+                  "block w-full rounded-lg border-l-2 px-2.5 py-1.5 text-left text-xs leading-snug " +
                   (i === active
-                    ? "border-neutral-400 bg-neutral-50 text-neutral-900"
-                    : "border-neutral-200 text-neutral-600 hover:bg-neutral-50")
+                    ? "border-neutral-900 bg-neutral-50 text-neutral-900"
+                    : "border-transparent text-neutral-500 hover:bg-neutral-50")
                 }
               >
-                {c.question}
+                {c.path ? "↳ basics: " : ""}
+                {c.question.replace(/^Start from the basics: /, "")}
               </button>
             ))
           )}
@@ -276,6 +201,108 @@ export default function Guide({ catalog }: { catalog: Catalog }) {
         </form>
       </aside>
     </main>
+  );
+}
+
+function fallbackCard(question: string, prose: string): AnswerCard {
+  return { question, framing: question, prose, table: null, sourceConceptIds: [], outOfScope: false };
+}
+
+function Turn({
+  id,
+  card,
+  active,
+  last,
+  source,
+  pending,
+  onExplore,
+  onRung,
+  onAction,
+  onBasics,
+  onSource,
+}: {
+  id: string;
+  card: AnswerCard;
+  active: boolean;
+  last: boolean;
+  source: string[] | null;
+  pending: boolean;
+  onExplore: (term: string) => void;
+  onRung: (name: string) => void;
+  onAction: (q: string) => void;
+  onBasics: () => void;
+  onSource: () => void;
+}) {
+  return (
+    <article
+      id={id}
+      className={
+        "scroll-mt-6 space-y-4 rounded-2xl border p-5 transition-colors " +
+        (active ? "border-neutral-300" : "border-neutral-200")
+      }
+    >
+      <p className="text-xs text-neutral-400">
+        You asked: <span className="text-neutral-600">{card.question}</span>
+      </p>
+      {card.framing && card.framing !== card.question && (
+        <h2 className="text-lg font-semibold leading-snug text-neutral-900">{card.framing}</h2>
+      )}
+      {card.prose && <Prose text={card.prose} glossary={card.glossary ?? []} onExplore={onExplore} />}
+
+      {card.path && card.path.length > 0 && (
+        <ol className="space-y-2">
+          {card.path.map((r, n) => (
+            <li key={r.id}>
+              <button
+                onClick={() => onRung(r.name)}
+                disabled={pending}
+                className="block w-full rounded-xl border border-neutral-200 p-3 text-left hover:border-neutral-400 disabled:opacity-50"
+              >
+                <span className="text-sm font-medium text-neutral-900">
+                  {n + 1}. {r.name}
+                </span>
+                <span className="block text-xs leading-snug text-neutral-500">{r.why}</span>
+              </button>
+            </li>
+          ))}
+        </ol>
+      )}
+
+      {card.outOfScope && (
+        <p className="rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-600">
+          That's at the edge of this corpus — try a topic from the AI-foundations sessions.
+        </p>
+      )}
+
+      {card.table && (
+        <div className="space-y-1.5">
+          <Label>Two views — it depends</Label>
+          <TensionGrid table={card.table} />
+        </div>
+      )}
+
+      {source && <SourceBlock passages={source} />}
+
+      <div className="flex flex-wrap gap-2 border-t border-neutral-100 pt-4">
+        {last && (
+          <>
+            <ActionBtn onClick={onBasics} disabled={pending}>
+              Start from the basics
+            </ActionBtn>
+            {ACTIONS.map((a) => (
+              <ActionBtn key={a.label} onClick={() => onAction(a.q)} disabled={pending}>
+                {a.label}
+              </ActionBtn>
+            ))}
+          </>
+        )}
+        {card.sourceConceptIds.length > 0 && !source && (
+          <ActionBtn onClick={onSource} disabled={pending}>
+            Show the source
+          </ActionBtn>
+        )}
+      </div>
+    </article>
   );
 }
 
