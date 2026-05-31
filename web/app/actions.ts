@@ -61,6 +61,30 @@ const toProgress = (s: GuideState): Progress => ({
 });
 const toState = (sessionId: string, p: Progress): GuideState => ({ sessionId, ...p });
 
+// D2 reasoning Step for a tension (the "why" — shared by Go-deeper and a probe
+// breakdown). Returns null when there's no justification to surface.
+async function reasoningStep(
+  userId: string,
+  versionId: number,
+  tensionId: number,
+  targetEntity: number | null,
+  gesture: string,
+): Promise<(Step & { kind: "reasoning" }) | null> {
+  const reasoning = await getTensionReasoning(tensionId, versionId);
+  if (!reasoning) return null;
+  const r = await renderReasoning(reasoning, userId);
+  await logGesture({
+    userId,
+    gesture,
+    targetEntity,
+    recordKind: "reasoning",
+    recordId: tensionId,
+    model: r.usage?.model ?? null,
+    tokens: r.usage?.tokens ?? null,
+  });
+  return { ...r.step, tensionId };
+}
+
 // An unsurfaced tension in a concept's neighbourhood (itself or a related concept).
 function neighbourhoodTension(graph: SeqGraph, entityId: number, seenTensions: number[]) {
   const seen = new Set(seenTensions);
@@ -246,13 +270,38 @@ export async function submitProbe(
       probed: uniq([...loaded.probed, ...probe.conceptIds]),
       grasped: result.grasped ? uniq([...loaded.grasped, ...probe.conceptIds]) : loaded.grasped,
     };
+    const coverage = {
+      covered: result.covered,
+      total: probe.expectedSignals.length,
+      grasped: result.grasped,
+    };
+
+    // BREAKDOWN (SERVE_DESIGN §8): a miss opens the deeper structure right where
+    // understanding is thin — the "why" of the probed concept's tension — instead
+    // of advancing. A hit just moves on. The miss never traps the learner (the
+    // concept is marked probed, so it won't be re-asked).
+    if (!result.grasped) {
+      const graph = await loadGraph(v.id);
+      const concept = probe.conceptIds[0];
+      const t =
+        probe.tensionId != null
+          ? { id: probe.tensionId }
+          : concept != null
+            ? neighbourhoodTension(graph, concept, [])
+            : undefined;
+      const bd = t ? await reasoningStep(userId, v.id, t.id, applied.target, "breakdown") : null;
+      if (bd) {
+        const next: Progress = t
+          ? { ...applied, seenTensions: uniq([...applied.seenTensions, t.id]) }
+          : applied;
+        await saveProgress(userId, v.id, next);
+        return { step: bd, state: toState(state.sessionId, next), coverage };
+      }
+    }
+
     const { step: s, next } = await step(userId, v.id, applied, "probe");
     await saveProgress(userId, v.id, next);
-    return {
-      step: s,
-      state: toState(state.sessionId, next),
-      coverage: { covered: result.covered, total: probe.expectedSignals.length, grasped: result.grasped },
-    };
+    return { step: s, state: toState(state.sessionId, next), coverage };
   } catch {
     return { step: errorStep(), state };
   }
@@ -273,23 +322,12 @@ export async function goDeeper(state: GuideState, entityId: number): Promise<Adv
     // Find the concept's tension regardless of seen status — we're deepening the
     // one whose catch already showed, not surfacing a new one.
     const t = neighbourhoodTension(graph, entityId, []);
-    const reasoning = t ? await getTensionReasoning(t.id, v.id) : null;
-    if (!t || !reasoning) {
-      const { step: s, next } = await step(userId, v.id, loaded, "deeper"); // nothing deeper — move on
+    const s = t ? await reasoningStep(userId, v.id, t.id, loaded.target, "deeper") : null;
+    if (!s) {
+      const { step: adv, next } = await step(userId, v.id, loaded, "deeper"); // nothing deeper — move on
       await saveProgress(userId, v.id, next);
-      return { step: s, state: toState(state.sessionId, next) };
+      return { step: adv, state: toState(state.sessionId, next) };
     }
-    const r = await renderReasoning(reasoning, userId);
-    const s = { ...r.step, tensionId: t.id };
-    await logGesture({
-      userId,
-      gesture: "deeper",
-      targetEntity: loaded.target,
-      recordKind: "reasoning",
-      recordId: t.id,
-      model: r.usage?.model ?? null,
-      tokens: r.usage?.tokens ?? null,
-    });
     return { step: s, state: toState(state.sessionId, loaded) };
   } catch {
     return { step: errorStep(), state };
