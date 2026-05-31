@@ -1,19 +1,7 @@
 import "server-only";
 import { and, eq, inArray, isNotNull } from "drizzle-orm";
 import { db } from "./client";
-import {
-  corpusVersion,
-  entity,
-  relation,
-  claim,
-  tension,
-  probe,
-  provenance,
-  textUnit,
-  beliefNode,
-  justification,
-} from "./schema";
-import { assembleSide } from "@/lib/reasoning/assemble";
+import { corpusVersion, entity, claim, tension, provenance, textUnit } from "./schema";
 
 export type EntityRecord = {
   id: number;
@@ -33,15 +21,6 @@ export type TensionRecord = {
   claimB: { proposition: string; paradigm: string; thinker: string | null };
 };
 
-export type ProbeRecord = {
-  id: number;
-  kind: string;
-  prompt: string;
-  expectedSignals: string[];
-  conceptIds: number[];
-  tensionId: number | null;
-};
-
 /** The single frozen version serve reads (label + frozen). */
 export async function frozenVersion(label: string) {
   const rows = await db
@@ -52,26 +31,81 @@ export async function frozenVersion(label: string) {
   return rows[0] ?? null;
 }
 
-export async function getEntity(id: number): Promise<EntityRecord | null> {
-  const rows = await db.select().from(entity).where(eq(entity.id, id)).limit(1);
-  const e = rows[0];
-  return e
-    ? {
-        id: e.id,
-        name: e.name,
-        type: e.type,
-        definition: e.definition,
-        abstraction: e.abstraction,
-        paradigm: e.paradigm,
-      }
-    : null;
+// The whole frozen artifact, serialized as the agent's grounded system context
+// (SERVE_DESIGN §9 / agentic model). It's small and frozen, so we build it once
+// per version and cache in memory — the model reasons over ALL of it, grounded.
+const _artifactContext = new Map<number, string>();
+
+export async function getArtifactContext(versionId: number): Promise<string> {
+  const hit = _artifactContext.get(versionId);
+  if (hit) return hit;
+
+  const [ents, claims, tensions] = await Promise.all([
+    db
+      .select({ id: entity.id, name: entity.name, definition: entity.definition })
+      .from(entity)
+      .where(eq(entity.corpusVersion, versionId)),
+    db
+      .select({
+        id: claim.id,
+        proposition: claim.proposition,
+        paradigm: claim.paradigm,
+        thinker: claim.thinker,
+        conditions: claim.conditions,
+      })
+      .from(claim)
+      .where(eq(claim.corpusVersion, versionId)),
+    db
+      .select({
+        id: tension.id,
+        dimension: tension.dimension,
+        claimA: tension.claimA,
+        claimB: tension.claimB,
+        conditionsA: tension.conditionsA,
+        conditionsB: tension.conditionsB,
+      })
+      .from(tension)
+      .where(eq(tension.corpusVersion, versionId)),
+  ]);
+
+  const claimById = new Map(claims.map((c) => [c.id, c]));
+  const side = (id: number, cond: string) => {
+    const c = claimById.get(id);
+    if (!c) return "(missing)";
+    const who = `${c.paradigm}${c.thinker ? `/${c.thinker}` : ""}`;
+    return `${who}: ${c.proposition} — holds when ${cond}`;
+  };
+
+  const conceptLines = ents
+    .map((e) => `${e.id}: ${e.name} — ${e.definition ?? ""}`)
+    .join("\n");
+  const tensionLines = tensions
+    .map(
+      (t) =>
+        `${t.id}: ${t.dimension ?? "(contested)"}\n` +
+        `   A) ${side(t.claimA, t.conditionsA)}\n` +
+        `   B) ${side(t.claimB, t.conditionsB)}`,
+    )
+    .join("\n");
+  const claimLines = claims
+    .map(
+      (c) =>
+        `- ${c.proposition} (${c.paradigm}${c.thinker ? `/${c.thinker}` : ""})` +
+        (c.conditions ? ` — when ${c.conditions}` : ""),
+    )
+    .join("\n");
+
+  const ctx =
+    `# CONCEPTS (id: name — definition)\n${conceptLines}\n\n` +
+    `# TENSIONS (id: contested dimension, with both sides + when each holds)\n${tensionLines}\n\n` +
+    `# CLAIMS\n${claimLines}`;
+  _artifactContext.set(versionId, ctx);
+  return ctx;
 }
 
+/** Concepts (id, name, definition) — used by the deterministic template fallback. */
 export async function getEntitiesForVersion(versionId: number): Promise<EntityRecord[]> {
-  const rows = await db
-    .select()
-    .from(entity)
-    .where(eq(entity.corpusVersion, versionId));
+  const rows = await db.select().from(entity).where(eq(entity.corpusVersion, versionId));
   return rows.map((e) => ({
     id: e.id,
     name: e.name,
@@ -82,6 +116,7 @@ export async function getEntitiesForVersion(versionId: number): Promise<EntityRe
   }));
 }
 
+/** A single tension as the verbatim two-column record (cells the model never writes). */
 export async function getTension(id: number): Promise<TensionRecord | null> {
   const rows = await db.select().from(tension).where(eq(tension.id, id)).limit(1);
   const t = rows[0];
@@ -108,123 +143,7 @@ export async function getTension(id: number): Promise<TensionRecord | null> {
   };
 }
 
-export async function getProbe(id: number): Promise<ProbeRecord | null> {
-  const rows = await db.select().from(probe).where(eq(probe.id, id)).limit(1);
-  const p = rows[0];
-  return p
-    ? {
-        id: p.id,
-        kind: p.kind,
-        prompt: p.prompt,
-        expectedSignals: p.expectedSignals ?? [],
-        conceptIds: p.conceptIds ?? [],
-        tensionId: p.tensionId,
-      }
-    : null;
-}
-
-// The grounded reasoner's substrate (SERVE_DESIGN §9): the typed records around a
-// concept that the model is allowed to reason OVER (and only over). Outgoing
-// relations + the claims asserted about the concept. NOT the whole graph — the
-// node's neighbourhood, so the model synthesises without fabricating.
-export type ConceptContext = {
-  relations: { relType: string; name: string }[];
-  claims: {
-    proposition: string;
-    thinker: string | null;
-    paradigm: string;
-    conditions: string | null;
-  }[];
-};
-
-export async function getConceptContext(
-  entityId: number,
-  versionId: number,
-): Promise<ConceptContext> {
-  const [rels, claims] = await Promise.all([
-    db
-      .select({ relType: relation.relType, name: entity.name })
-      .from(relation)
-      .innerJoin(entity, eq(entity.id, relation.toEntity))
-      .where(and(eq(relation.corpusVersion, versionId), eq(relation.fromEntity, entityId))),
-    db
-      .select({
-        proposition: claim.proposition,
-        thinker: claim.thinker,
-        paradigm: claim.paradigm,
-        conditions: claim.conditions,
-        conceptIds: claim.conceptIds,
-      })
-      .from(claim)
-      .where(eq(claim.corpusVersion, versionId)),
-  ]);
-  return {
-    relations: rels.map((r) => ({ relType: r.relType, name: r.name })),
-    claims: claims
-      .filter((c) => (c.conceptIds ?? []).includes(entityId))
-      .map((c) => ({
-        proposition: c.proposition,
-        thinker: c.thinker,
-        paradigm: c.paradigm,
-        conditions: c.conditions,
-      })),
-  };
-}
-
-// Depth tier 2 — the "why" (SERVE_DESIGN §9). For a tension, each side's claim
-// plus its TMS justification: the rationale and the premise propositions it rests
-// on (resolved from the dependency network db/belief.py built). The reasoner
-// explains the why from this; it never invents a justification.
-export type TensionReasoning = {
-  dimension: string | null;
-  sideA: { label: string; proposition: string; rationale: string | null; premises: string[] };
-  sideB: { label: string; proposition: string; rationale: string | null; premises: string[] };
-};
-
-export async function getTensionReasoning(
-  tensionId: number,
-  versionId: number,
-): Promise<TensionReasoning | null> {
-  const trows = await db.select().from(tension).where(eq(tension.id, tensionId)).limit(1);
-  const t = trows[0];
-  if (!t) return null;
-
-  const [claims, bnodes, justs] = await Promise.all([
-    db
-      .select({
-        id: claim.id,
-        proposition: claim.proposition,
-        paradigm: claim.paradigm,
-        thinker: claim.thinker,
-      })
-      .from(claim)
-      .where(eq(claim.corpusVersion, versionId)),
-    db.select({ id: beliefNode.id, claimId: beliefNode.claimId }).from(beliefNode),
-    db
-      .select({
-        beliefNode: justification.beliefNode,
-        antecedentBeliefIds: justification.antecedentBeliefIds,
-        rationale: justification.rationale,
-      })
-      .from(justification),
-  ]);
-
-  const claimProps = new Map(claims.map((c) => [c.id, c.proposition]));
-  const meta = new Map(claims.map((c) => [c.id, c]));
-  const side = (cid: number) => {
-    const m = meta.get(cid);
-    const r = assembleSide(cid, bnodes, justs, claimProps);
-    return {
-      label: m ? `${m.paradigm}${m.thinker ? ` (${m.thinker})` : ""}` : "",
-      proposition: m?.proposition ?? "",
-      rationale: r.rationale,
-      premises: r.premises,
-    };
-  };
-  return { dimension: t.dimension, sideA: side(t.claimA), sideB: side(t.claimB) };
-}
-
-/** Depth tier 3: the source passages behind a concept's claims (raw, no model). */
+/** The source passages behind a concept's claims (raw, no model) — provenance pull. */
 export async function getProvenanceForEntity(entityId: number): Promise<string[]> {
   const rows = await db
     .select({ text: textUnit.text, claimId: provenance.claimId, conceptIds: claim.conceptIds })
