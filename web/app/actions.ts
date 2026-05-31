@@ -91,12 +91,29 @@ async function step(
   if (ref.kind === "entity") {
     const rec = await getEntity(ref.entityId);
     if (!rec) return { step: renderStop(), next: progress };
-    const hasTension = !!neighbourhoodTension(graph, ref.entityId, progress.seenTensions);
     const context = await getConceptContext(ref.entityId, versionId);
-    const r = await renderEntity(rec, userId, { hasTension, context });
+    // The catch ships INLINE with the briefing — but only for the goal concept
+    // itself (economy: don't dump every prerequisite's tension, SERVE_DESIGN §5).
+    // When shown inline, mark the tension seen so the sequencer doesn't re-emit
+    // it as a separate Step.
+    const nt =
+      ref.entityId === target
+        ? neighbourhoodTension(graph, ref.entityId, progress.seenTensions)
+        : undefined;
+    let catchTable: import("@/lib/render").TensionTable | undefined;
+    let seenTensions = progress.seenTensions;
+    if (nt) {
+      const trec = await getTension(nt.id);
+      const tstep = trec ? renderTension(trec) : null;
+      if (tstep && tstep.kind === "tension") {
+        catchTable = tstep.table;
+        seenTensions = uniq([...progress.seenTensions, nt.id]);
+      }
+    }
+    const r = await renderEntity(rec, userId, { context, catch: catchTable });
     s = r.step;
     usage = r.usage;
-    next = { ...progress, seen: uniq([...progress.seen, ref.entityId]) };
+    next = { ...progress, seen: uniq([...progress.seen, ref.entityId]), seenTensions };
     recordId = ref.entityId;
   } else if (ref.kind === "tension") {
     const rec = await getTension(ref.tensionId);

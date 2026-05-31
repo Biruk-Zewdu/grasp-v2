@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { startGoal, ask, forward, submitProbe, expandSource, goDeeper } from "./actions";
 import { initialState, type GuideState, type Coverage } from "@/lib/guide/types";
-import type { Step } from "@/lib/render";
+import type { Step, TensionTable } from "@/lib/render";
 
 const EXAMPLES = [
   "why does deep learning struggle with reasoning?",
@@ -236,25 +236,39 @@ function StepCard({ step, coverage }: { step: Step; coverage: Coverage | null })
       )}
 
       {step.kind === "tension" ? (
-        <div className="space-y-3">
-          {step.table.dimension && (
-            <p className="text-sm text-neutral-700">{step.table.dimension}</p>
-          )}
-          <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl bg-neutral-200 text-xs">
-            <Cell head>{step.table.labelA}</Cell>
-            <Cell head>{step.table.labelB}</Cell>
-            <Cell>{step.table.propA}</Cell>
-            <Cell>{step.table.propB}</Cell>
-            <Cell muted>When: {step.table.whenA}</Cell>
-            <Cell muted>When: {step.table.whenB}</Cell>
-          </div>
-        </div>
+        <TensionGrid table={step.table} />
       ) : step.kind === "probe" ? (
         <p className="text-sm text-neutral-800">{step.prompt}</p>
       ) : (
-        <p className="text-sm leading-relaxed text-neutral-800">{step.point}</p>
+        <div className="space-y-4">
+          <p className="text-sm leading-relaxed text-neutral-800">{step.point}</p>
+          {step.kind === "briefing" && step.catch && (
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">
+                The catch — it depends
+              </p>
+              <TensionGrid table={step.catch} />
+            </div>
+          )}
+        </div>
       )}
     </article>
+  );
+}
+
+function TensionGrid({ table }: { table: TensionTable }) {
+  return (
+    <div className="space-y-3">
+      {table.dimension && <p className="text-sm text-neutral-700">{table.dimension}</p>}
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl bg-neutral-200 text-xs">
+        <Cell head>{table.labelA}</Cell>
+        <Cell head>{table.labelB}</Cell>
+        <Cell>{table.propA}</Cell>
+        <Cell>{table.propB}</Cell>
+        <Cell muted>When: {table.whenA}</Cell>
+        <Cell muted>When: {table.whenB}</Cell>
+      </div>
+    </div>
   );
 }
 

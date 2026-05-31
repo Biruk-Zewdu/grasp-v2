@@ -15,7 +15,7 @@ export type TensionTable = {
   whenB: string;
 };
 export type Step =
-  | { kind: "briefing"; entityId: number; title: string; point: string; pullPoints: PullPoint[] }
+  | { kind: "briefing"; entityId: number; title: string; point: string; pullPoints: PullPoint[]; catch?: TensionTable }
   | { kind: "tension"; tensionId: number; title: string; point: string; table: TensionTable; pullPoints: PullPoint[] }
   | { kind: "probe"; probeId: number; title: string; prompt: string }
   | { kind: "stop"; title: string; point: string };
@@ -33,7 +33,7 @@ export type ModelUsage = { model?: string; tokens?: number };
 export async function renderEntity(
   e: EntityRecord,
   sessionId: string,
-  opts: { hasTension: boolean; context?: ConceptContext },
+  opts: { context?: ConceptContext; catch?: TensionTable },
 ): Promise<{ step: Step; usage?: ModelUsage }> {
   let point = e.definition ?? e.name;
 
@@ -80,12 +80,13 @@ export async function renderEntity(
   if (reasoned.ok && reasoned.data.point.trim()) point = reasoned.data.point.trim();
   const usage = reasoned.ok ? { model: reasoned.model, tokens: reasoned.tokens } : undefined;
 
-  const pullPoints: PullPoint[] = [];
-  if (opts.hasTension) pullPoints.push({ tier: 1, label: "When does each view apply?" });
-  pullPoints.push({ tier: 3, label: "Show the source" });
+  // Depth-on-demand: source is always pullable. The "catch" (the live tension) is
+  // NOT a pull — when one is relevant it ships INLINE in the step (SERVE_DESIGN §6,
+  // §9); opts.catch carries it. The D2 "why" pull is added in a later stage.
+  const pullPoints: PullPoint[] = [{ tier: 3, label: "Show the source" }];
 
   return {
-    step: { kind: "briefing", entityId: e.id, title: e.name, point, pullPoints },
+    step: { kind: "briefing", entityId: e.id, title: e.name, point, pullPoints, catch: opts.catch },
     usage,
   };
 }
