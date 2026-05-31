@@ -1,0 +1,91 @@
+{
+  "session": "session_9_aggregation",
+  "source_title": "session_9_aggregation",
+  "corpus_label": "v1-draft",
+  "note": "M1 (Module 7; the product's due-process / tensions-preserved design). Core fork: machine-learning aggregation (deep learning) vs Hewitt's Actor model. Viewpoints, due process, pluralism, and monotonicity ground 'tensions preserved, never resolved'.",
+
+  "entities": [
+    {"key": "aggregation", "name": "aggregation", "type": "Mechanism", "abstraction": "foundational", "paradigm": "society",
+     "definition": "Managing how information is propagated (aggregated) across an organized society of agents so they act intelligently while passing only a small amount of information — the concrete form of Minsky's learning in a society."},
+    {"key": "actor_model", "name": "actor model", "type": "Paradigm", "abstraction": "paradigmatic", "paradigm": "society",
+     "definition": "Hewitt's general model of computation for aggregating information across autonomous actors: each actor processes, stores, and propagates information with procedural embedding of knowledge, maintains its own state (no global state), and communicates by 'pure messaging'."},
+    {"key": "due_process", "name": "due process", "type": "Mechanism", "abstraction": "mechanism", "paradigm": "society",
+     "definition": "A credit-assignment strategy (e.g. scientific peer review, legal procedure) that guarantees a fair procedure was followed rather than a correct outcome; it negotiates among actors with inconsistent goals and is concerned with the reasonableness of decisions, not 'the right answer'."},
+    {"key": "viewpoint", "name": "viewpoint", "type": "Representation", "abstraction": "mechanism", "paradigm": "society",
+     "definition": "A 'relativized belief' — the same message classified under different assumptions, authors, times, or theories — which lets an open system hold logically inconsistent information without forcing consensus."},
+    {"key": "pluralism", "name": "pluralism", "type": "Mechanism", "abstraction": "mechanism", "paradigm": "society",
+     "definition": "Tolerance of diversity: competing hypotheses are allowed to coexist and are corrected over time by due process, rather than resolved immediately — the basis of a self-correcting community."},
+    {"key": "pandemonium", "name": "Pandemonium", "type": "Example", "abstraction": "instance", "paradigm": "shannon",
+     "definition": "Selfridge's pattern-recognition system of competing 'demons' (feature detectors) that 'shout' at a volume proportional to a match, aggregated up a hierarchy by a decision demon; an ancestor of deep learning."},
+    {"key": "ensemble_methods", "name": "ensemble methods", "type": "Mechanism", "abstraction": "mechanism", "paradigm": "shannon",
+     "definition": "Aggregating many weak 'learners' to reach consensus via error cancellation ('wisdom of the crowd'); works only if learners are independent, diverse, and better than random, and only for isolated predefined decisions."},
+    {"key": "carl_hewitt", "name": "Carl Hewitt", "type": "Thinker", "abstraction": null, "paradigm": "society",
+     "definition": "Minsky's student at MIT who framed aggregation as the problem of inconsistent information among autonomous actors and proposed the Actor model and organizing AI like a scientific community."},
+
+    {"key": "credit_assignment", "name": "credit assignment", "type": "Problem", "abstraction": "foundational", "paradigm": "neutral"},
+    {"key": "society_of_mind", "name": "society of mind", "type": "Paradigm", "abstraction": "paradigmatic", "paradigm": "society"},
+    {"key": "deep_learning", "name": "deep learning", "type": "Paradigm", "abstraction": "paradigmatic", "paradigm": "shannon"},
+    {"key": "truth_maintenance_system", "name": "truth maintenance system", "type": "Mechanism", "abstraction": "mechanism", "paradigm": "society"},
+    {"key": "geoff_hinton", "name": "Geoff Hinton", "type": "Thinker", "abstraction": null, "paradigm": "shannon"}
+  ],
+
+  "relations": [
+    {"from": "aggregation", "rel_type": "addresses", "to": "credit_assignment", "evidence": "Aggregation is the problem of assigning credit across an organized society of agents.", "para": 16},
+    {"from": "aggregation", "rel_type": "extends", "to": "society_of_mind", "evidence": "Aggregation makes Minsky's learning-in-a-society concrete.", "para": 1},
+    {"from": "pandemonium", "rel_type": "specializes", "to": "aggregation", "evidence": "Pandemonium is the competition-based basic aggregation strategy.", "para": 4},
+    {"from": "ensemble_methods", "rel_type": "specializes", "to": "aggregation", "evidence": "Ensemble methods are the consensus-based basic aggregation strategy.", "para": 12},
+    {"from": "actor_model", "rel_type": "specializes", "to": "aggregation", "evidence": "The Actor model is Hewitt's formalization of intelligent aggregation.", "para": 41},
+    {"from": "actor_model", "rel_type": "composed_of", "to": "due_process", "evidence": "Intelligent aggregation assigns credit based on due-process procedures.", "para": 24},
+    {"from": "actor_model", "rel_type": "composed_of", "to": "viewpoint", "evidence": "Actors assert and watch for viewpoints (relativized beliefs).", "para": 23},
+    {"from": "due_process", "rel_type": "enables", "to": "pluralism", "evidence": "Due process (peer review) lets a community tolerate diversity and self-correct.", "para": 24},
+    {"from": "viewpoint", "rel_type": "enables", "to": "pluralism", "evidence": "Relativizing beliefs as viewpoints lets inconsistent information coexist.", "para": 23},
+    {"from": "actor_model", "rel_type": "extends", "to": "truth_maintenance_system", "evidence": "Each actor maintains its own state, akin to truth maintenance, with no global state.", "para": 43},
+    {"from": "actor_model", "rel_type": "proposed_by", "to": "carl_hewitt", "evidence": "Hewitt's Actor model.", "para": 41},
+    {"from": "due_process", "rel_type": "proposed_by", "to": "carl_hewitt", "evidence": "Hewitt's due-process framing of credit assignment.", "para": 24},
+    {"from": "deep_learning", "rel_type": "extends", "to": "pandemonium", "evidence": "Hinton generalized Selfridge's Pandemonium to unsupervised feature learning.", "para": 35},
+    {"from": "actor_model", "rel_type": "contradicts", "to": "deep_learning", "evidence": "Hewitt argued machine-learning aggregation is inadequate for inconsistent information.", "para": 39}
+  ],
+
+  "claims": [
+    {"key": "c1", "proposition": "Aggregation is managing how information is propagated across a society of agents so they act intelligently by passing only a small amount of information — making Minsky's learning-in-a-society concrete.",
+     "concept_keys": ["aggregation", "society_of_mind", "credit_assignment"], "claim_type": "definitional", "thinker": "Carl Hewitt", "paradigm": "society", "conditions": null, "status": "established",
+     "provenance": [{"para": 16, "asserted_by": "course notes (S9 §1, §3)"}]},
+    {"key": "c2", "proposition": "The fundamental aggregation problem is that autonomous actors inevitably produce inconsistent information — different viewpoints, contradictory goals, and physical lag in message propagation — so aggregation must assume an open system, not the closed-world assumption.",
+     "concept_keys": ["aggregation", "viewpoint"], "claim_type": "causal", "thinker": "Carl Hewitt", "paradigm": "society", "conditions": "actors are autonomous", "status": "established",
+     "provenance": [{"para": 18, "asserted_by": "Hewitt (via S9 §3.1)"}]},
+    {"key": "c3", "proposition": "Star's Durkheim test evaluates an AI by its usefulness to a community's evolving goals and its ability to encompass multiple viewpoints while increasing communication across them — not by the Turing test's single given task.",
+     "concept_keys": ["aggregation", "pluralism"], "claim_type": "contradictory", "thinker": "Susan Leigh Star", "paradigm": "society", "conditions": null, "status": "established",
+     "provenance": [{"para": 19, "asserted_by": "Star (via S9 §3.1)"}]},
+    {"key": "c4", "proposition": "The solution is to organize an AI system like a scientific community: assert viewpoints (relativized beliefs), assign credit by due process (peer review) rather than by deciding the right answer, and tolerate diversity (pluralism) so the system self-corrects over time.",
+     "concept_keys": ["due_process", "viewpoint", "pluralism"], "claim_type": "definitional", "thinker": "Carl Hewitt", "paradigm": "society", "conditions": "information is inevitably inconsistent", "status": "established",
+     "provenance": [{"para": 24, "asserted_by": "Hewitt (via S9 §3.2.1)"}]},
+    {"key": "c5", "proposition": "Concurrent information processing follows protocols: monotonicity (a disseminated message cannot be erased, only marked retracted or superseded), commutativity (messages received in any order), parallelism, and pluralism.",
+     "concept_keys": ["due_process", "pluralism"], "claim_type": "definitional", "thinker": "Carl Hewitt", "paradigm": "society", "conditions": null, "status": "established",
+     "provenance": [{"para": 30, "asserted_by": "Hewitt (via S9 §3.2.2)"}]},
+    {"key": "c6", "proposition": "Machine-learning aggregation generalizes Selfridge's Pandemonium to unsupervised feature learning ('hidden units', representation learning) plus systems of simple, reinforcement-controlled agents — efficient, but the agents resemble feature-detectors more than a scientific community.",
+     "concept_keys": ["deep_learning", "pandemonium"], "claim_type": "causal", "thinker": "Geoff Hinton", "paradigm": "shannon", "conditions": "the task is recognizing or generating patterns from abundant data", "status": "contested",
+     "provenance": [{"para": 38, "asserted_by": "Hinton (via S9 §4.1)"}]},
+    {"key": "c7", "proposition": "Hewitt's Actor model aggregates autonomous actors that embed knowledge in procedures (pattern-directed inference), maintain their own state with no global state, unfold as events, and communicate by homeostatic 'pure messaging' — adequate for inconsistent information where machine learning is not.",
+     "concept_keys": ["actor_model", "due_process"], "claim_type": "contradictory", "thinker": "Carl Hewitt", "paradigm": "society", "conditions": "information is inevitably inconsistent and actors must reason and negotiate", "status": "contested",
+     "provenance": [{"para": 42, "asserted_by": "Hewitt (via S9 §4.2)"}]}
+  ],
+
+  "tensions": [
+    {"key": "t1", "claim_a": "c6", "claim_b": "c7", "dimension": "how to aggregate information across many agents: learn general patterns from simple units in bit strings plus systems of simple agents (deep learning) vs. autonomous actors negotiating inconsistent viewpoints by due process and pluralism (the Actor model)",
+     "conditions_a": "Machine-learning aggregation fits when the task is recognizing or generating patterns from abundant data and the agents can be simple software functions: aggregation as error-cancellation and representation-learning, assuming consistent or given problems.",
+     "conditions_b": "The Actor model fits when information is inevitably inconsistent (different viewpoints, contradictory goals, physical lag) and actors must reason carefully and negotiate: due process, a monotonic viewpoint register, concurrency, and pluralism — passing Star's Durkheim test rather than the Turing test.",
+     "session_keys": ["s9"]}
+  ],
+
+  "probes": [
+    {"kind": "tension", "tension_key": "t1", "concept_keys": ["actor_model", "deep_learning"],
+     "prompt": "Deep learning aggregates by combining many simple pattern-detectors; Hewitt's Actor model aggregates autonomous actors by due process. When is inconsistency something to average away, and when is it something to preserve and negotiate? Use viewpoints, due process, and the Durkheim vs. Turing test.",
+     "expected_signals": [
+       "Identifies ensemble/error-cancellation (average away inconsistency) as fitting isolated, predefined decisions with abundant data.",
+       "Identifies due process / viewpoints as preserving inconsistency when goals and points of view genuinely conflict.",
+       "Explains viewpoints as relativized beliefs that let contradictory information coexist (open system, not closed-world).",
+       "Contrasts the Turing test (single given task) with the Durkheim test (usefulness to a community's evolving, multi-viewpoint goals).",
+       "Keeps it conditional — neither universally correct; preserves rather than resolves the tension."
+     ]}
+  ]
+}

@@ -1,0 +1,95 @@
+{
+  "session": "session_2_information_processing",
+  "source_title": "session_2_information_processing",
+  "corpus_label": "v1-draft",
+  "note": "M1. Core fork: Shannon information (syntactic/bits/brute force) vs Simon information (semantic/lists/modularity). Reference entities (credit assignment, reinforcement learning, society of mind, combinatorial explosion, temporal differencing) are re-declared minimally so cross-session relations resolve and the source link is recorded; their definitions were set in session 1.",
+
+  "entities": [
+    {"key": "information_processing", "name": "information processing", "type": "Problem", "abstraction": "foundational", "paradigm": "neutral",
+     "definition": "Any use of information (storing, manipulating, displaying, trafficking in symbols) by agents interacting with a problem-solving environment to learn to assign credit; the session's reframing of credit assignment as message passing among agents."},
+    {"key": "shannon_information", "name": "Shannon information", "type": "Paradigm", "abstraction": "paradigmatic", "paradigm": "shannon",
+     "definition": "Claude Shannon's approach: information is syntactic, its unit is the meaningless bit, and intelligence is ultimately a matter of brute force (channel capacity)."},
+    {"key": "simon_information", "name": "Simon information", "type": "Paradigm", "abstraction": "paradigmatic", "paradigm": "simon",
+     "definition": "Herbert Simon's approach: information is semantic, its unit is the meaningful list, and intelligence is a matter of abstracting/modularizing a problem rather than adding capacity."},
+    {"key": "bit", "name": "bit", "type": "Representation", "abstraction": "mechanism", "paradigm": "shannon",
+     "definition": "A meaningless binary digit (0/1); the building-block unit of Shannon information, linked into bit strings that encode any symbol."},
+    {"key": "list", "name": "list", "type": "Representation", "abstraction": "mechanism", "paradigm": "simon",
+     "definition": "A named, meaningful unit (a label that designates objects/concepts in the world, followed by items) that can be linked into arbitrarily abstract structures; Simon's building-block unit."},
+    {"key": "brute_force", "name": "brute force", "type": "Mechanism", "abstraction": "mechanism", "paradigm": "shannon",
+     "definition": "Assigning credit by pairing an embarrassingly simple strategy (e.g. a value function) with massive channel capacity; the strategy Sutton's 'bitter lesson' celebrates."},
+    {"key": "modularity", "name": "modularity", "type": "Mechanism", "abstraction": "mechanism", "paradigm": "simon",
+     "definition": "Assigning credit by abstracting a problem into meaningful modules (Simon's watchmaker), so the agent processes higher-level lists rather than every detail."},
+    {"key": "physical_symbol_system_hypothesis", "name": "physical symbol system hypothesis", "type": "Hypothesis", "abstraction": "paradigmatic", "paradigm": "simon",
+     "definition": "Newell & Simon's hypothesis that physical symbols (symbols meaningfully referring to the world, not just stored bit strings) are a necessary and sufficient basis for intelligence."},
+    {"key": "watchmaker_parable", "name": "watchmaker parable", "type": "Example", "abstraction": "example", "paradigm": "simon",
+     "definition": "Simon's parable (Architecture of Complexity, 1962): a watchmaker who decomposes a 1,000-part watch into named modules finishes vastly faster under interruption than one assembling part-by-part — the case for modularity."},
+    {"key": "claude_shannon", "name": "Claude Shannon", "type": "Thinker", "abstraction": null, "paradigm": "shannon",
+     "definition": "MIT co-founder of the field; introduced information theory, bits, and entropy, and built the maze-learning robot Theseus (1950)."},
+    {"key": "herbert_simon", "name": "Herbert Simon", "type": "Thinker", "abstraction": null, "paradigm": "simon",
+     "definition": "Carnegie-Mellon co-founder of the field; proposed semantic/list-based information, the physical symbol system hypothesis (with Newell), satisficing, and modular decomposition."},
+
+    {"key": "credit_assignment", "name": "credit assignment", "type": "Problem", "abstraction": "foundational", "paradigm": "neutral"},
+    {"key": "reinforcement_learning", "name": "reinforcement learning", "type": "Paradigm", "abstraction": "paradigmatic", "paradigm": "reinforcement"},
+    {"key": "society_of_mind", "name": "society of mind", "type": "Paradigm", "abstraction": "paradigmatic", "paradigm": "society"},
+    {"key": "combinatorial_explosion", "name": "combinatorial explosion", "type": "Problem", "abstraction": "foundational", "paradigm": "neutral"},
+    {"key": "temporal_differencing", "name": "temporal differencing", "type": "Mechanism", "abstraction": "mechanism", "paradigm": "reinforcement"}
+  ],
+
+  "relations": [
+    {"from": "shannon_information", "rel_type": "specializes", "to": "information_processing", "evidence": "Shannon information is Approach 1 to information processing.", "para": 6},
+    {"from": "simon_information", "rel_type": "specializes", "to": "information_processing", "evidence": "Simon information is Approach 2 to information processing.", "para": 11},
+    {"from": "information_processing", "rel_type": "addresses", "to": "credit_assignment", "evidence": "Assigning credit is reframed as an information process of evaluating patterns in symbols.", "para": 4},
+    {"from": "shannon_information", "rel_type": "composed_of", "to": "bit", "evidence": "Shannon proposed bits as the building-block units of syntactic information processing.", "para": 6},
+    {"from": "simon_information", "rel_type": "composed_of", "to": "list", "evidence": "Simon proposed lists as the units of meaningful information.", "para": 13},
+    {"from": "shannon_information", "rel_type": "composed_of", "to": "brute_force", "evidence": "Shannon information implies credit assignment is ultimately a matter of brute force (channel capacity).", "para": 10},
+    {"from": "simon_information", "rel_type": "composed_of", "to": "modularity", "evidence": "Simon information implies credit assignment through modular abstraction.", "para": 15},
+    {"from": "brute_force", "rel_type": "addresses", "to": "combinatorial_explosion", "evidence": "Shannon's claim: a linear increase in channel capacity can exponentially reduce signal-to-noise, offsetting combinatorial explosion.", "para": 8},
+    {"from": "modularity", "rel_type": "addresses", "to": "credit_assignment", "evidence": "Modular decomposition lets an agent describe a problem with fewer, higher-level lists.", "para": 15},
+    {"from": "brute_force", "rel_type": "exemplified_by", "to": "temporal_differencing", "evidence": "Sutton's value function is the 'embarrassingly simple strategy' paired with scale in the bitter lesson.", "para": 10},
+    {"from": "modularity", "rel_type": "exemplified_by", "to": "watchmaker_parable", "evidence": "Simon's watchmaker parable illustrates the gains of modular decomposition under interruption.", "para": 12},
+    {"from": "physical_symbol_system_hypothesis", "rel_type": "proposed_by", "to": "herbert_simon", "evidence": "Newell & Simon's Turing Award articulation of list processing.", "para": 13},
+    {"from": "physical_symbol_system_hypothesis", "rel_type": "addresses", "to": "credit_assignment", "evidence": "Physical symbols are claimed necessary and sufficient for intelligence (efficient credit assignment).", "para": 13},
+    {"from": "shannon_information", "rel_type": "proposed_by", "to": "claude_shannon", "evidence": "Shannon's 1948 paper.", "para": 6},
+    {"from": "simon_information", "rel_type": "proposed_by", "to": "herbert_simon", "evidence": "Simon's 1962 'Architecture of Complexity'.", "para": 11}
+  ],
+
+  "claims": [
+    {"key": "c1", "proposition": "Assigning credit is an information process of evaluating (matching or recognizing) patterns in symbols about problems; AI ideas differ in which symbolic patterns they take as the basic unit of information.",
+     "concept_keys": ["information_processing", "credit_assignment"], "claim_type": "definitional", "thinker": null, "paradigm": "neutral", "conditions": null, "status": "established",
+     "provenance": [{"para": 4, "asserted_by": "course notes (S2 §2)"}]},
+    {"key": "c2", "proposition": "Under Shannon information, the unit is the meaningless bit and an agent's ability to assign credit is entirely a matter of capacity for processing syntactic information over a limited channel.",
+     "concept_keys": ["shannon_information", "bit"], "claim_type": "definitional", "thinker": "Claude Shannon", "paradigm": "shannon", "conditions": null, "status": "established",
+     "provenance": [{"para": 6, "asserted_by": "Shannon 1948 (via S2 §3)"}]},
+    {"key": "c3", "proposition": "The brute-force assumption is that any combinatorial explosion in problem complexity will be more than offset by the exponential increase in signal-to-noise from a linear increase in channel capacity.",
+     "concept_keys": ["brute_force", "combinatorial_explosion"], "claim_type": "conditional", "thinker": "Richard Sutton", "paradigm": "shannon", "conditions": "holds if added channel capacity compensates for combinatorial complexity", "status": "contested",
+     "provenance": [{"para": 10, "asserted_by": "Sutton 'The Bitter Lesson' 2019 (via S2 §3.4)"}]},
+    {"key": "c4", "proposition": "Under Simon information, the unit is the meaningful list that designates objects in the world, and intelligence comes from finding better, higher-level abstractions rather than adding channel capacity.",
+     "concept_keys": ["simon_information", "list", "physical_symbol_system_hypothesis"], "claim_type": "definitional", "thinker": "Herbert Simon", "paradigm": "simon", "conditions": null, "status": "established",
+     "provenance": [{"para": 13, "asserted_by": "Newell & Simon 1976 (via S2 §4.2)"}]},
+    {"key": "c5", "proposition": "The modularity assumption is that adding bigger computers will NOT produce a disproportionate increase in a system's ability to assign credit; one is better off decomposing the problem into meaningful modules.",
+     "concept_keys": ["modularity", "watchmaker_parable"], "claim_type": "conditional", "thinker": "Herbert Simon", "paradigm": "simon", "conditions": "holds when better abstractions, not capacity, are the binding constraint", "status": "contested",
+     "provenance": [{"para": 15, "asserted_by": "course notes (S2 §4.4)"}]},
+    {"key": "c6", "proposition": "Shannon information assumes outcomes are independently and identically distributed (IID) — the world stays the same — whereas real-world credit assignment is often out-of-distribution (OOD), which was Minsky's point.",
+     "concept_keys": ["shannon_information", "simon_information"], "claim_type": "contradictory", "thinker": null, "paradigm": "bridging", "conditions": "IID vs OOD problem dynamics", "status": "contested",
+     "provenance": [{"para": 16, "asserted_by": "course notes (S2 §5.1)"}]}
+  ],
+
+  "tensions": [
+    {"key": "t1", "claim_a": "c2", "claim_b": "c4", "dimension": "the fundamental unit of information and the route to intelligence: meaningless bits processed by brute force (scaling channel capacity) vs. meaningful lists organized by modular abstraction",
+     "conditions_a": "Shannon information better describes credit assignment when the problem is closed and IID — a stable distribution of possible messages (a fixed maze, next-word prediction within a known language) — so a linear increase in channel capacity exponentially improves signal-to-noise and brute force suffices.",
+     "conditions_b": "Simon information better describes credit assignment when problems are novel/OOD and must be decomposed, where added channel capacity cannot substitute for better abstractions (lists) and meaning/designation is required to avoid processing every detail.",
+     "session_keys": ["s2"]}
+  ],
+
+  "probes": [
+    {"kind": "tension", "tension_key": "t1", "concept_keys": ["shannon_information", "simon_information"],
+     "prompt": "Sutton's 'bitter lesson' says scaling compute (brute force) beats clever strategy; Simon's watchmaker says modular abstraction beats scale. When does just adding capacity win, and when does it fail? Use the IID vs OOD distinction in your answer.",
+     "expected_signals": [
+       "Frames brute force as winning when the problem is closed/IID — a stable distribution of possible messages (e.g. a fixed game, next-word prediction in a known language).",
+       "Frames modularity/abstraction as winning when problems are novel/OOD and must be decomposed.",
+       "Connects bits-vs-lists (meaningless syntactic units vs meaningful designating units) to the two strategies.",
+       "Notes that adding channel capacity cannot substitute for better abstractions when meaning/designation is required.",
+       "Keeps it conditional — does not crown one approach universally correct."
+     ]}
+  ]
+}

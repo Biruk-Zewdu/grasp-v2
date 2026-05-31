@@ -1,0 +1,90 @@
+{
+  "session": "session_3_search",
+  "source_title": "session_3_search",
+  "corpus_label": "v1-draft",
+  "note": "M1. Core fork: von Neumann search (game-playing, utility maximization) vs Simon search / means-ends analysis (structuring an ill-defined problem). means-ends analysis + satisficing + heuristic are load-bearing for the product's Sequencer.",
+
+  "entities": [
+    {"key": "search", "name": "search", "type": "Mechanism", "abstraction": "foundational", "paradigm": "neutral",
+     "definition": "Dividing the labor of a complex problem into plans (sequences of actions) and using heuristics to economize on information processing — generating and evaluating only satisfactory plans rather than testing every state."},
+    {"key": "search_tree", "name": "search tree", "type": "Representation", "abstraction": "mechanism", "paradigm": "neutral",
+     "definition": "A state space drawn as nodes (states) and paths (action sequences); a highly restricted network whose only links are sequential. Agents transition from an initial state to a goal state through it."},
+    {"key": "heuristic", "name": "heuristic", "type": "Mechanism", "abstraction": "mechanism", "paradigm": "neutral",
+     "definition": "An imperfect but stable rule-of-thumb that guides which actions/plans to generate-and-test and which to ignore, pruning branches of the search tree to economize on processing."},
+    {"key": "satisficing", "name": "satisficing", "type": "Mechanism", "abstraction": "mechanism", "paradigm": "simon",
+     "definition": "Simon's heuristic of searching only for a satisfactory plan that crosses an aspiration level, then stopping — rather than optimizing or maximizing rewards."},
+    {"key": "von_neumann_search", "name": "von Neumann search", "type": "Paradigm", "abstraction": "paradigmatic", "paradigm": "von_neumann",
+     "definition": "Search conceived as playing a well-defined, often adversarial game (chess, checkers, Go): states reduce to numerical utility and are evaluated by a heuristic evaluation function. Extends reinforcement learning and Shannon information."},
+    {"key": "means_ends_analysis", "name": "means-ends analysis", "type": "Paradigm", "abstraction": "paradigmatic", "paradigm": "simon",
+     "definition": "Simon search (Newell & Simon's General Problem Solver): treat the difference between the current state and the goal state as intermediate feedback, and invoke an operator linked to that difference to get closer to the goal."},
+    {"key": "utility_function", "name": "utility function", "type": "Mechanism", "abstraction": "mechanism", "paradigm": "von_neumann",
+     "definition": "A function mapping each game state to a numerical expected reward (the 'utility'), estimated via a heuristic evaluation function so alternative actions can be ranked without searching the whole tree."},
+    {"key": "john_von_neumann", "name": "John von Neumann", "type": "Thinker", "abstraction": null, "paradigm": "von_neumann",
+     "definition": "Mathematician whose game theory underlies search as adversarial game-playing with utility functions."},
+
+    {"key": "credit_assignment", "name": "credit assignment", "type": "Problem", "abstraction": "foundational", "paradigm": "neutral"},
+    {"key": "combinatorial_explosion", "name": "combinatorial explosion", "type": "Problem", "abstraction": "foundational", "paradigm": "neutral"},
+    {"key": "reinforcement_learning", "name": "reinforcement learning", "type": "Paradigm", "abstraction": "paradigmatic", "paradigm": "reinforcement"},
+    {"key": "simon_information", "name": "Simon information", "type": "Paradigm", "abstraction": "paradigmatic", "paradigm": "simon"},
+    {"key": "society_of_mind", "name": "society of mind", "type": "Paradigm", "abstraction": "paradigmatic", "paradigm": "society"},
+    {"key": "intermediate_feedback", "name": "intermediate feedback", "type": "Mechanism", "abstraction": "mechanism", "paradigm": "neutral"},
+    {"key": "herbert_simon", "name": "Herbert Simon", "type": "Thinker", "abstraction": null, "paradigm": "simon"}
+  ],
+
+  "relations": [
+    {"from": "search", "rel_type": "addresses", "to": "credit_assignment", "evidence": "Search divides the labor of a complex problem using heuristics to assign credit more efficiently.", "para": 5},
+    {"from": "search", "rel_type": "composed_of", "to": "heuristic", "evidence": "Agents search by generating and selecting plans using heuristics.", "para": 15},
+    {"from": "search", "rel_type": "composed_of", "to": "satisficing", "evidence": "Satisficing is itself a heuristic governing when to stop searching.", "para": 24},
+    {"from": "heuristic", "rel_type": "addresses", "to": "combinatorial_explosion", "evidence": "Heuristics 'prune' branches, avoiding evaluation of every state in a combinatorially explosive tree.", "para": 20},
+    {"from": "heuristic", "rel_type": "enables", "to": "search_tree", "evidence": "Heuristics guide which parts of the search tree to generate-and-test.", "para": 15},
+    {"from": "von_neumann_search", "rel_type": "specializes", "to": "search", "evidence": "Von Neumann search is search conceived as game-playing.", "para": 26},
+    {"from": "means_ends_analysis", "rel_type": "specializes", "to": "search", "evidence": "Simon search is search conceived as means-ends analysis.", "para": 30},
+    {"from": "von_neumann_search", "rel_type": "composed_of", "to": "utility_function", "evidence": "States are collapsed into a single utility value via an evaluation function.", "para": 28},
+    {"from": "von_neumann_search", "rel_type": "extends", "to": "reinforcement_learning", "evidence": "Samuel's checkers program used reinforcement learning to improve the evaluation function.", "para": 28},
+    {"from": "means_ends_analysis", "rel_type": "extends", "to": "simon_information", "evidence": "Simon search manipulates physical symbols (lists) toward a meaningful goal state.", "para": 30},
+    {"from": "means_ends_analysis", "rel_type": "extends", "to": "society_of_mind", "evidence": "Simon search structures an open-ended problem, closer to learning-in-a-society.", "para": 30},
+    {"from": "means_ends_analysis", "rel_type": "composed_of", "to": "intermediate_feedback", "evidence": "The difference between current and goal state is the intermediate feedback that invokes an operator.", "para": 31},
+    {"from": "von_neumann_search", "rel_type": "proposed_by", "to": "john_von_neumann", "evidence": "Von Neumann's game theory.", "para": 26},
+    {"from": "means_ends_analysis", "rel_type": "proposed_by", "to": "herbert_simon", "evidence": "Newell & Simon's General Problem Solver.", "para": 30},
+    {"from": "search_tree", "rel_type": "exemplified_by", "to": "society_of_mind", "evidence": "The inverted stacked-maze tree looks like Minsky's hierarchical 'society' (CEO/managers/staff).", "para": 3}
+  ],
+
+  "claims": [
+    {"key": "c1", "proposition": "Search is a heuristic process: dividing a complex problem into plans and using heuristics to generate-and-test only satisfactory plans, by contrast to brute force which tests every state.",
+     "concept_keys": ["search", "heuristic"], "claim_type": "definitional", "thinker": null, "paradigm": "neutral", "conditions": null, "status": "established",
+     "provenance": [{"para": 5, "asserted_by": "course notes (S3 §1-2)"}]},
+    {"key": "c2", "proposition": "The division of labor is a general solution to credit assignment: any complex task can be divided into simpler subtasks that are easier to learn and can be mechanized.",
+     "concept_keys": ["search", "credit_assignment"], "claim_type": "causal", "thinker": null, "paradigm": "neutral", "conditions": null, "status": "established",
+     "provenance": [{"para": 9, "asserted_by": "Smith 1776; Babbage 1834 (via S3 §2.1)"}]},
+    {"key": "c3", "proposition": "Using heuristics to prune branches of the search tree lets an agent solve a combinatorially explosive problem by evaluating only parts of the tree, economizing on information processing.",
+     "concept_keys": ["heuristic", "combinatorial_explosion", "search_tree"], "claim_type": "causal", "thinker": null, "paradigm": "neutral", "conditions": "the problem is not random (heuristics must carry real information)", "status": "established",
+     "provenance": [{"para": 20, "asserted_by": "course notes (S3 §3.1)"}]},
+    {"key": "c4", "proposition": "Intelligent agents satisfice: they search only for satisfactory plans crossing an aspiration level and then stop, rather than seeking optimal plans or maximizing rewards.",
+     "concept_keys": ["satisficing"], "claim_type": "definitional", "thinker": "Herbert Simon", "paradigm": "simon", "conditions": "information processing is costly and goals are organizational/ambiguous", "status": "established",
+     "provenance": [{"para": 24, "asserted_by": "Simon (via S3 §3.2)"}]},
+    {"key": "c5", "proposition": "Von Neumann search treats search as a well-defined game: every state is collapsed into a numerical utility via an evaluation function, and reinforcement learning improves that function.",
+     "concept_keys": ["von_neumann_search", "utility_function"], "claim_type": "definitional", "thinker": "John von Neumann", "paradigm": "von_neumann", "conditions": "rules and goals are well-defined", "status": "established",
+     "provenance": [{"para": 28, "asserted_by": "course notes (S3 §4)"}]},
+    {"key": "c6", "proposition": "Simon search (means-ends analysis) treats the difference between the current and goal state as feedback that invokes an operator; with a good representation the goal state may already be implicit in the initial state, requiring no search.",
+     "concept_keys": ["means_ends_analysis", "intermediate_feedback"], "claim_type": "definitional", "thinker": "Herbert Simon", "paradigm": "simon", "conditions": "the world is open-ended and must be represented", "status": "established",
+     "provenance": [{"para": 31, "asserted_by": "Newell & Simon, GPS (via S3 §5)"}]}
+  ],
+
+  "tensions": [
+    {"key": "t1", "claim_a": "c5", "claim_b": "c6", "dimension": "what 'search' is: playing a well-defined game by maximizing a utility function vs. understanding and structuring an ill-defined problem by reducing differences toward a meaningful goal",
+     "conditions_a": "Von Neumann search fits when the rules and goals are well-defined and often adversarial (chess, Go, checkers): all states reduce to a numerical utility, so reinforcement learning over an evaluation function suffices and physical symbols are unnecessary.",
+     "conditions_b": "Simon search fits when the world is open-ended and the problem itself must be represented: search becomes the manipulation of physical symbols (lists) toward a meaningful goal state via means-ends analysis, where a good representation can dissolve the search entirely.",
+     "session_keys": ["s3"]}
+  ],
+
+  "probes": [
+    {"kind": "concept", "concept_keys": ["search", "heuristic", "satisficing"], "tension_key": null,
+     "prompt": "Why is 'search' called search rather than brute force? Explain how heuristics and satisficing together let an agent solve a combinatorially explosive problem without examining the whole search tree.",
+     "expected_signals": [
+       "Contrasts search with brute force: heuristics let the agent evaluate only part of the tree rather than every state.",
+       "Explains heuristics as rules-of-thumb that prune branches, economizing on information processing.",
+       "Explains satisficing as stopping once a plan crosses an aspiration level, rather than finding the optimum.",
+       "Notes this trades a guarantee of optimality for tractability — satisfactory, not optimal, solutions."
+     ]}
+  ]
+}

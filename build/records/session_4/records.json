@@ -1,0 +1,88 @@
+{
+  "session": "session_4_evolutionary_strategies",
+  "source_title": "session_4_evolutionary_strategies",
+  "corpus_label": "v1-draft",
+  "note": "M1. Core fork: genetic/chromosome approach (vary-and-select whole schemas, reinforcement side) vs Sussman's propagator model (adapt within local constraints, society side). Introduces the performance landscape and fitness.",
+
+  "entities": [
+    {"key": "adaptation", "name": "adaptation", "type": "Mechanism", "abstraction": "foundational", "paradigm": "neutral",
+     "definition": "Learning to search effectively (where to search), framed as a population-level generate-and-test that assigns credit across spatially-interdependent actions; AI ideas for it are 'evolutionary strategies' derived from Darwinism."},
+    {"key": "performance_landscape", "name": "performance landscape", "type": "Representation", "abstraction": "mechanism", "paradigm": "neutral",
+     "definition": "A picture of the relationship between an agent's actions (X-axis) and performance/fitness (elevation); used to visualize learning as a journey across hills, valleys, ridges, and mesas."},
+    {"key": "fitness", "name": "fitness", "type": "Mechanism", "abstraction": "mechanism", "paradigm": "neutral",
+     "definition": "A system's ability to survive and reproduce relative to others; performance is judged relative to a specific type of problem (a niche), not absolutely."},
+    {"key": "genetic_algorithm", "name": "genetic algorithm", "type": "Mechanism", "abstraction": "mechanism", "paradigm": "reinforcement",
+     "definition": "Holland's approach: represent a solution as a chromosome of genes (bit strings), and adapt a population via crossover and mutation selected by fitness — searching a vast space by 'implicit parallelism', balancing exploration and exploitation."},
+    {"key": "propagator_model", "name": "propagator model", "type": "Mechanism", "abstraction": "mechanism", "paradigm": "society",
+     "definition": "Sussman's approach: represent a problem as connected objects (cells) carrying local constraints, and adapt by propagating information among them so each constraint can be satisfied independently — not by evolving a whole schema."},
+    {"key": "john_holland", "name": "John Holland", "type": "Thinker", "abstraction": null, "paradigm": "reinforcement",
+     "definition": "University of Michigan scholar who pioneered genetic algorithms and the insight of implicit parallelism."},
+    {"key": "gerald_sussman", "name": "Gerald Sussman", "type": "Thinker", "abstraction": null, "paradigm": "society",
+     "definition": "Minsky's student at MIT who pioneered the propagator model for constraint-based adaptation and reasoning."},
+
+    {"key": "credit_assignment", "name": "credit assignment", "type": "Problem", "abstraction": "foundational", "paradigm": "neutral"},
+    {"key": "reinforcement_learning", "name": "reinforcement learning", "type": "Paradigm", "abstraction": "paradigmatic", "paradigm": "reinforcement"},
+    {"key": "society_of_mind", "name": "society of mind", "type": "Paradigm", "abstraction": "paradigmatic", "paradigm": "society"},
+    {"key": "exploration_exploitation_tradeoff", "name": "exploration-exploitation tradeoff", "type": "Mechanism", "abstraction": "mechanism", "paradigm": "reinforcement"},
+    {"key": "superstitious_learning", "name": "superstitious learning", "type": "Problem", "abstraction": "mechanism", "paradigm": "neutral"},
+    {"key": "watchmaker_parable", "name": "watchmaker parable", "type": "Example", "abstraction": "example", "paradigm": "simon"},
+    {"key": "means_ends_analysis", "name": "means-ends analysis", "type": "Paradigm", "abstraction": "paradigmatic", "paradigm": "simon"},
+    {"key": "marvin_minsky", "name": "Marvin Minsky", "type": "Thinker", "abstraction": null, "paradigm": "society"}
+  ],
+
+  "relations": [
+    {"from": "adaptation", "rel_type": "addresses", "to": "credit_assignment", "evidence": "Adaptation is a population-level generate-and-test strategy for assigning credit.", "para": 7},
+    {"from": "performance_landscape", "rel_type": "enables", "to": "adaptation", "evidence": "The landscape metaphor visualizes the feedback-driven adaptation process.", "para": 12},
+    {"from": "adaptation", "rel_type": "composed_of", "to": "fitness", "evidence": "Adaptation assigns credit by selecting higher-fitness solutions.", "para": 10},
+    {"from": "adaptation", "rel_type": "exemplified_by", "to": "watchmaker_parable", "evidence": "Adaptation fleshes out the watchmaker parable's spatial decomposition of parts by function.", "para": 1},
+    {"from": "performance_landscape", "rel_type": "exemplified_by", "to": "superstitious_learning", "evidence": "Climbing the wrong local peak on a rugged landscape visualizes superstitious learning.", "para": 26},
+    {"from": "genetic_algorithm", "rel_type": "specializes", "to": "adaptation", "evidence": "Genetic algorithms are one evolutionary approach to adaptation.", "para": 48},
+    {"from": "propagator_model", "rel_type": "specializes", "to": "adaptation", "evidence": "The propagator model is the second evolutionary approach.", "para": 52},
+    {"from": "genetic_algorithm", "rel_type": "extends", "to": "reinforcement_learning", "evidence": "GAs balance exploration and exploitation just as reinforcement learning does.", "para": 51},
+    {"from": "genetic_algorithm", "rel_type": "composed_of", "to": "exploration_exploitation_tradeoff", "evidence": "Implicit parallelism works by balancing exploration-exploitation across a population.", "para": 51},
+    {"from": "propagator_model", "rel_type": "extends", "to": "society_of_mind", "evidence": "The propagator model adapts within a society of connected constraint-bearing objects.", "para": 56},
+    {"from": "propagator_model", "rel_type": "extends", "to": "means_ends_analysis", "evidence": "Minsky frames the propagator model as flexibly manipulating symbols to construct the landscape, closer to Simon's means-ends analysis.", "para": 56},
+    {"from": "genetic_algorithm", "rel_type": "proposed_by", "to": "john_holland", "evidence": "Holland's genetic algorithms.", "para": 48},
+    {"from": "propagator_model", "rel_type": "proposed_by", "to": "gerald_sussman", "evidence": "Sussman's propagator model.", "para": 52},
+    {"from": "propagator_model", "rel_type": "proposed_by", "to": "marvin_minsky", "evidence": "Minsky's overall view of evolutionary strategies motivates the propagator model.", "para": 56}
+  ],
+
+  "claims": [
+    {"key": "c1", "proposition": "Adaptation is a population-level generate-and-test strategy that assigns credit across spatially-interdependent actions, complementing reinforcement's focus on sequentially-interdependent actions.",
+     "concept_keys": ["adaptation", "credit_assignment"], "claim_type": "definitional", "thinker": null, "paradigm": "neutral", "conditions": null, "status": "established",
+     "provenance": [{"para": 7, "asserted_by": "course notes (S4 §2)"}]},
+    {"key": "c2", "proposition": "Simple evolutionary operators — variation, selection, retention (VSR) — can adapt solutions to problems of vast complexity, as a competitive market 'learns' to select high-fitness firms.",
+     "concept_keys": ["adaptation", "fitness"], "claim_type": "causal", "thinker": null, "paradigm": "neutral", "conditions": null, "status": "established",
+     "provenance": [{"para": 8, "asserted_by": "course notes (S4 §2.1)"}]},
+    {"key": "c3", "proposition": "On a rugged landscape, hill-climbing gets an agent stuck on a local peak (myopia, path dependence, superstitious learning); escaping requires exploration ('long-jumps') balanced against exploitation (hill-climbing).",
+     "concept_keys": ["performance_landscape", "exploration_exploitation_tradeoff", "superstitious_learning"], "claim_type": "causal", "thinker": null, "paradigm": "reinforcement", "conditions": "interdependence makes the landscape rugged with multiple local peaks", "status": "established",
+     "provenance": [{"para": 26, "asserted_by": "course notes (S4 §3.2)"}]},
+    {"key": "c4", "proposition": "Genetic algorithms search a vast space via 'implicit parallelism' — crossover and mutation over a population of chromosomes — extending reinforcement's exploration-exploitation balance with the simple abstraction of chromosomes.",
+     "concept_keys": ["genetic_algorithm", "exploration_exploitation_tradeoff"], "claim_type": "causal", "thinker": "John Holland", "paradigm": "reinforcement", "conditions": "structure cannot be decomposed and can only be experimented with", "status": "established",
+     "provenance": [{"para": 51, "asserted_by": "Holland (via S4 §4.2)"}]},
+    {"key": "c5", "proposition": "In the propagator model a problem is represented as connected objects carrying local constraints, and adaptation occurs within each constraint by propagating information among objects, rather than evolving an entire schema.",
+     "concept_keys": ["propagator_model"], "claim_type": "definitional", "thinker": "Gerald Sussman", "paradigm": "society", "conditions": "the structure can be understood as stable constraints", "status": "established",
+     "provenance": [{"para": 54, "asserted_by": "Sussman (via S4 §4.3)"}]},
+    {"key": "c6", "proposition": "Minsky argued that gene- and chromosome-inspired approaches are too slow because they mostly hill-climb; intelligence instead needs to construct an understanding of a problem's structure as constraints, closer to means-ends analysis.",
+     "concept_keys": ["propagator_model", "means_ends_analysis"], "claim_type": "contradictory", "thinker": "Marvin Minsky", "paradigm": "society", "conditions": "problems where evolution would take too many generations", "status": "contested",
+     "provenance": [{"para": 56, "asserted_by": "Minsky (via S4 §4.3)"}]}
+  ],
+
+  "tensions": [
+    {"key": "t1", "claim_a": "c4", "claim_b": "c5", "dimension": "how to adapt on a rugged landscape: vary-and-select across whole schemas by balancing exploration/exploitation vs. propagate information within local constraints to construct an understanding of structure",
+     "conditions_a": "The genetic approach fits when the designer cannot decompose a problem's structure and can only experiment: treat building blocks as genes/chromosomes and let variation and selection (implicit parallelism) explore the landscape — at the risk of being slow and merely hill-climbing.",
+     "conditions_b": "The propagator model fits when structure can be understood as stable constraints: adapt within each constraint independently by propagating information among connected objects, smoothing the landscape — closer to Simon's means-ends analysis than to blind variation.",
+     "session_keys": ["s4"]}
+  ],
+
+  "probes": [
+    {"kind": "concept", "concept_keys": ["performance_landscape", "exploration_exploitation_tradeoff"], "tension_key": null,
+     "prompt": "On a rugged performance landscape, why does pure hill-climbing get an agent 'stuck', and how do exploration vs. exploitation address it? What does Minsky's 'mesa' landscape add that hills and peaks miss?",
+     "expected_signals": [
+       "Explains that hill-climbing on a rugged landscape converges to a local (not global) peak — myopia and path dependence.",
+       "Frames exploitation as small hill-climbing moves and exploration as risky long-jumps to escape local peaks.",
+       "Connects climbing the wrong peak to superstitious learning (feedback that only seems to improve performance).",
+       "Notes the mesa landscape has no gradients, so the challenge is reaching a threshold of understanding ('giant strides'), not optimizing."
+     ]}
+  ]
+}
