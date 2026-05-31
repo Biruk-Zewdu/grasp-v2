@@ -1,6 +1,5 @@
 import "server-only";
-import { structuredCall } from "@/lib/server/anthropic";
-import { MODELS } from "@/lib/server/env";
+import { structuredCall } from "@/lib/server/model";
 import { getEntitiesForVersion, type EntityRecord } from "@/lib/db/records";
 
 export type GoalMatch = { entityId: number; name: string } | { gap: true };
@@ -56,21 +55,19 @@ export async function classifyGoal(
 
   const model = await structuredCall<{ entityId: number | null }>({
     sessionId,
-    model: MODELS.classify,
+    role: "classify",
     cacheSystem: true,
     system:
       "Map a learner's goal to the single best-matching concept id from this list, " +
       "or null if none fits. Return only an id from the list.\n\nCONCEPTS:\n" +
       conceptList,
     user: `Goal: ${goal}`,
-    tool: {
-      name: "route",
-      description: "Return the best concept id, or null if the goal is off-corpus.",
-      input_schema: {
-        type: "object",
-        properties: { entityId: { type: ["integer", "null"] } },
-        required: ["entityId"],
-      },
+    schemaName: "route",
+    schema: {
+      type: "object",
+      properties: { entityId: { type: ["integer", "null"] } },
+      required: ["entityId"],
+      additionalProperties: false,
     },
     maxTokens: 50,
   });

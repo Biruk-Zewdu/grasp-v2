@@ -1,6 +1,5 @@
 import "server-only";
-import { structuredCall } from "@/lib/server/anthropic";
-import { MODELS } from "@/lib/server/env";
+import { structuredCall } from "@/lib/server/model";
 import type { EntityRecord, TensionRecord, ProbeRecord } from "@/lib/db/records";
 
 // A Step is composed at serve time and never stored (store atoms, compose steps).
@@ -33,20 +32,18 @@ export async function renderEntity(
 
   const phrased = await structuredCall<{ point: string }>({
     sessionId,
-    model: MODELS.render,
+    role: "render",
     system:
       "You phrase one course concept for a learner in 1-2 plain sentences. " +
       "Use ONLY the supplied definition. Do NOT add facts, examples, names, or " +
-      "claims that are not in it. Return the phrasing via the tool.",
+      "claims that are not in it.",
     user: `Concept: ${e.name}\nType: ${e.type}\nDefinition: ${e.definition ?? ""}`,
-    tool: {
-      name: "briefing",
-      description: "Return a faithful 1-2 sentence phrasing of the definition.",
-      input_schema: {
-        type: "object",
-        properties: { point: { type: "string" } },
-        required: ["point"],
-      },
+    schemaName: "briefing",
+    schema: {
+      type: "object",
+      properties: { point: { type: "string" } },
+      required: ["point"],
+      additionalProperties: false,
     },
     maxTokens: 300,
   });

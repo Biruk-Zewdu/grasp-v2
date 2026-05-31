@@ -1,6 +1,5 @@
 import "server-only";
-import { structuredCall } from "@/lib/server/anthropic";
-import { MODELS } from "@/lib/server/env";
+import { structuredCall } from "@/lib/server/model";
 import type { ProbeRecord } from "@/lib/db/records";
 
 // Coverage-only probe check (g12). We report WHICH authored signals the response
@@ -41,7 +40,7 @@ export async function checkProbe(
 
   const model = await structuredCall<{ covered: number[] }>({
     sessionId,
-    model: MODELS.probe,
+    role: "probe",
     system:
       "You check COVERAGE only. Given a learner's response and a numbered list of " +
       "signals a good answer would touch, return the indices of the signals the " +
@@ -50,14 +49,12 @@ export async function checkProbe(
     user:
       `Response:\n${response}\n\nSignals:\n` +
       signals.map((s, i) => `${i}: ${s}`).join("\n"),
-    tool: {
-      name: "coverage",
-      description: "Return indices of signals the response touches.",
-      input_schema: {
-        type: "object",
-        properties: { covered: { type: "array", items: { type: "integer" } } },
-        required: ["covered"],
-      },
+    schemaName: "coverage",
+    schema: {
+      type: "object",
+      properties: { covered: { type: "array", items: { type: "integer" } } },
+      required: ["covered"],
+      additionalProperties: false,
     },
     maxTokens: 100,
   });
