@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { corpusVersion, source, textUnit, entity, relation, claim, provenance, beliefNode, justification, tension, viewpoint, probe } from "./schema";
+import { corpusVersion, source, textUnit, entity, relation, claim, provenance, beliefNode, justification, tension, viewpoint, probe, appSession, gapLog } from "./schema";
 
 export const sourceRelations = relations(source, ({one, many}) => ({
 	corpusVersion: one(corpusVersion, {
@@ -19,6 +19,8 @@ export const corpusVersionRelations = relations(corpusVersion, ({many}) => ({
 	claims: many(claim),
 	tensions: many(tension),
 	probes: many(probe),
+	appSessions: many(appSession),
+	gapLogs: many(gapLog),
 }));
 
 export const textUnitRelations = relations(textUnit, ({one, many}) => ({
@@ -154,5 +156,19 @@ export const probeRelations = relations(probe, ({one}) => ({
 	tension: one(tension, {
 		fields: [probe.tensionId],
 		references: [tension.id]
+	}),
+}));
+
+export const appSessionRelations = relations(appSession, ({one}) => ({
+	corpusVersion: one(corpusVersion, {
+		fields: [appSession.corpusVersion],
+		references: [corpusVersion.id]
+	}),
+}));
+
+export const gapLogRelations = relations(gapLog, ({one}) => ({
+	corpusVersion: one(corpusVersion, {
+		fields: [gapLog.corpusVersion],
+		references: [corpusVersion.id]
 	}),
 }));

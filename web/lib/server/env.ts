@@ -36,9 +36,11 @@ export const MODELS: Record<ProviderName, Record<Role, string>> = {
 };
 
 // App-level caps (the second layer under the provider's hard spend limit).
+// Durable per-user windows (Postgres-backed; see lib/server/budget.ts) so caps
+// survive serverless restarts. Both env-overridable.
 export const BUDGET = {
-  perSession: Number(process.env.BUDGET_PER_SESSION ?? 20),
-  perHour: Number(process.env.BUDGET_PER_HOUR ?? 100),
+  perHour: Number(process.env.BUDGET_PER_HOUR ?? 60),
+  perDay: Number(process.env.BUDGET_PER_DAY ?? 200),
 };
 
 export function openaiKey(): string | null {

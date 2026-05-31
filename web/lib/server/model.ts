@@ -16,7 +16,7 @@ const PROVIDERS = { openai: openaiProvider, anthropic: anthropicProvider } as co
 export type StructuredResult<T> = ProviderResult<T>;
 
 export async function structuredCall<T>(opts: {
-  sessionId: string;
+  sessionId: string; // identity key (uuid): anon-auth uid, else client session uuid
   role: Role;
   system: string;
   user: string;
@@ -27,7 +27,7 @@ export async function structuredCall<T>(opts: {
 }): Promise<StructuredResult<T>> {
   if (!liveEnabled()) return { ok: false, reason: "template-mode" };
 
-  const budget = checkAndConsume(opts.sessionId);
+  const budget = await checkAndConsume(opts.sessionId);
   if (!budget.ok) return { ok: false, reason: budget.reason };
 
   const provider = PROVIDERS[MODEL_PROVIDER];

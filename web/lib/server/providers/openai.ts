@@ -34,7 +34,12 @@ export const openaiProvider: Provider = {
       if (msg?.refusal) return { ok: false, reason: `refusal: ${msg.refusal}` };
       const content = msg?.content;
       if (!content) return { ok: false, reason: "empty response" };
-      return { ok: true, data: JSON.parse(content) as T };
+      return {
+        ok: true,
+        data: JSON.parse(content) as T,
+        tokens: resp.usage?.total_tokens,
+        model: req.model,
+      };
     } catch (err) {
       return { ok: false, reason: `api-error: ${(err as Error).message}` };
     }

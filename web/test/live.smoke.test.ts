@@ -18,8 +18,9 @@ d("live model smoke (one real API call)", () => {
   });
 
   it("phrases a briefing through the live provider and consumes one budget slot", async () => {
+    const smokeId = crypto.randomUUID();
     const r = await structuredCall<{ point: string }>({
-      sessionId: "smoke",
+      sessionId: smokeId,
       role: "render",
       system: "Phrase the concept in one short sentence using ONLY the definition.",
       user:
@@ -41,12 +42,12 @@ d("live model smoke (one real API call)", () => {
       expect(typeof r.data.point).toBe("string");
       expect(r.data.point.length).toBeGreaterThan(0);
     }
-    expect(budgetStatus("smoke").sessionUsed).toBeGreaterThan(0);
+    expect((await budgetStatus(smokeId)).hourUsed).toBeGreaterThan(0);
   });
 
   it("classify (mid model) returns a structured nullable id via strict schema", async () => {
     const r = await structuredCall<{ entityId: number | null }>({
-      sessionId: "smoke2",
+      sessionId: crypto.randomUUID(),
       role: "classify",
       cacheSystem: true,
       system:

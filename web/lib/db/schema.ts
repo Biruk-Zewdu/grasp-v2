@@ -1,4 +1,4 @@
-import { pgTable, unique, integer, text, timestamp, foreignKey, check, pgEnum } from "drizzle-orm/pg-core"
+import { pgTable, unique, integer, text, timestamp, foreignKey, check, pgPolicy, uuid, index, boolean, primaryKey, pgEnum } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
 export const abstraction = pgEnum("abstraction", ['foundational', 'paradigmatic', 'mechanism', 'instance', 'example'])
@@ -246,4 +246,65 @@ export const probe = pgTable("probe", {
 		}),
 	check("probe_has_signals", sql`array_length(expected_signals, 1) >= 1`),
 	check("probe_target", sql`((kind = 'tension'::probe_kind) AND (tension_id IS NOT NULL)) OR ((kind = 'concept'::probe_kind) AND (array_length(concept_ids, 1) >= 1))`),
+]);
+
+export const appSession = pgTable("app_session", {
+	id: integer().primaryKey().generatedAlwaysAsIdentity({ name: "app_session_id_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 2147483647, cache: 1 }),
+	userId: uuid("user_id").notNull(),
+	corpusVersion: integer("corpus_version"),
+	targetEntity: integer("target_entity"),
+	seenEntityIds: integer("seen_entity_ids").array().default([]).notNull(),
+	graspedEntityIds: integer("grasped_entity_ids").array().default([]).notNull(),
+	probedEntityIds: integer("probed_entity_ids").array().default([]).notNull(),
+	seenTensionIds: integer("seen_tension_ids").array().default([]).notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	foreignKey({
+			columns: [table.corpusVersion],
+			foreignColumns: [corpusVersion.id],
+			name: "app_session_corpus_version_fkey"
+		}),
+	unique("app_session_user_id_key").on(table.userId),
+	pgPolicy("app_session_self", { as: "permissive", for: "all", to: ["public"], using: sql`(auth.uid() = user_id)`, withCheck: sql`(auth.uid() = user_id)`  }),
+]);
+
+export const gapLog = pgTable("gap_log", {
+	id: integer().primaryKey().generatedAlwaysAsIdentity({ name: "gap_log_id_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 2147483647, cache: 1 }),
+	goalText: text("goal_text").notNull(),
+	userId: uuid("user_id"),
+	corpusVersion: integer("corpus_version"),
+	resolved: boolean().default(false).notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("gap_log_unresolved_idx").using("btree", table.createdAt.desc().nullsFirst().op("timestamptz_ops")).where(sql`(NOT resolved)`),
+	foreignKey({
+			columns: [table.corpusVersion],
+			foreignColumns: [corpusVersion.id],
+			name: "gap_log_corpus_version_fkey"
+		}),
+]);
+
+export const gestureLog = pgTable("gesture_log", {
+	id: integer().primaryKey().generatedAlwaysAsIdentity({ name: "gesture_log_id_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 2147483647, cache: 1 }),
+	userId: uuid("user_id"),
+	gesture: text().notNull(),
+	targetEntity: integer("target_entity"),
+	recordKind: text("record_kind"),
+	recordId: integer("record_id"),
+	latencyMs: integer("latency_ms"),
+	model: text(),
+	tokens: integer(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("gesture_log_created_idx").using("btree", table.createdAt.desc().nullsFirst().op("timestamptz_ops")),
+]);
+
+export const usageCounter = pgTable("usage_counter", {
+	userId: uuid("user_id").notNull(),
+	bucket: text().notNull(),
+	windowStart: timestamp("window_start", { withTimezone: true, mode: 'string' }).notNull(),
+	count: integer().default(0).notNull(),
+}, (table) => [
+	primaryKey({ columns: [table.userId, table.bucket, table.windowStart], name: "usage_counter_pkey"}),
 ]);

@@ -12,7 +12,9 @@ export interface ProviderRequest {
   cacheSystem?: boolean; // cache the (large, static) system prefix where supported
 }
 
-export type ProviderResult<T> = { ok: true; data: T } | { ok: false; reason: string };
+export type ProviderResult<T> =
+  | { ok: true; data: T; tokens?: number; model?: string }
+  | { ok: false; reason: string };
 
 export interface Provider {
   readonly name: string;

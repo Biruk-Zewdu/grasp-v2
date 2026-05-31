@@ -38,7 +38,10 @@ export const anthropicProvider: Provider = {
 
       const block = resp.content.find((c) => c.type === "tool_use");
       if (!block || block.type !== "tool_use") return { ok: false, reason: "no tool_use" };
-      return { ok: true, data: block.input as T };
+      const tokens = resp.usage
+        ? resp.usage.input_tokens + resp.usage.output_tokens
+        : undefined;
+      return { ok: true, data: block.input as T, tokens, model: req.model };
     } catch (err) {
       return { ok: false, reason: `api-error: ${(err as Error).message}` };
     }
