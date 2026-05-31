@@ -25,10 +25,12 @@
     {"key": "constraint", "name": "constraint", "type": "Mechanism", "abstraction": "mechanism", "paradigm": "neutral"},
     {"key": "causal_net", "name": "causal net", "type": "Mechanism", "abstraction": "mechanism", "paradigm": "neutral"},
     {"key": "means_ends_analysis", "name": "means-ends analysis", "type": "Paradigm", "abstraction": "paradigmatic", "paradigm": "simon"},
-    {"key": "deep_learning", "name": "deep learning", "type": "Paradigm", "abstraction": "paradigmatic", "paradigm": "shannon"}
+    {"key": "deep_learning", "name": "deep learning", "type": "Paradigm", "abstraction": "paradigmatic", "paradigm": "shannon"},
+    {"key": "generate_and_test", "name": "generate-and-test", "type": "Mechanism", "abstraction": "foundational", "paradigm": "neutral"}
   ],
 
   "relations": [
+    {"from": "debugging", "rel_type": "extends", "to": "generate_and_test", "evidence": "Debugging makes the generate-and-test process into generate-test-and-debug.", "para": 8},
     {"from": "debugging", "rel_type": "addresses", "to": "credit_assignment", "evidence": "Credit assignment is reframed as a debugging process over representations of physical systems.", "para": 5},
     {"from": "debugging", "rel_type": "composed_of", "to": "causal_interpretation", "evidence": "Debugging constructs a causal interpretation of how a system functions.", "para": 10},
     {"from": "debugging", "rel_type": "composed_of", "to": "first_principles_reasoning", "evidence": "Debugging reasons from a small set of domain first principles.", "para": 16},

@@ -27,10 +27,12 @@
     {"key": "superstitious_learning", "name": "superstitious learning", "type": "Problem", "abstraction": "mechanism", "paradigm": "neutral"},
     {"key": "watchmaker_parable", "name": "watchmaker parable", "type": "Example", "abstraction": "example", "paradigm": "simon"},
     {"key": "means_ends_analysis", "name": "means-ends analysis", "type": "Paradigm", "abstraction": "paradigmatic", "paradigm": "simon"},
-    {"key": "marvin_minsky", "name": "Marvin Minsky", "type": "Thinker", "abstraction": null, "paradigm": "society"}
+    {"key": "marvin_minsky", "name": "Marvin Minsky", "type": "Thinker", "abstraction": null, "paradigm": "society"},
+    {"key": "generate_and_test", "name": "generate-and-test", "type": "Mechanism", "abstraction": "foundational", "paradigm": "neutral"}
   ],
 
   "relations": [
+    {"from": "adaptation", "rel_type": "extends", "to": "generate_and_test", "evidence": "Adaptation is a generate-and-test strategy for assigning credit at the population level.", "para": 7},
     {"from": "adaptation", "rel_type": "addresses", "to": "credit_assignment", "evidence": "Adaptation is a population-level generate-and-test strategy for assigning credit.", "para": 7},
     {"from": "performance_landscape", "rel_type": "enables", "to": "adaptation", "evidence": "The landscape metaphor visualizes the feedback-driven adaptation process.", "para": 12},
     {"from": "adaptation", "rel_type": "composed_of", "to": "fitness", "evidence": "Adaptation assigns credit by selecting higher-fitness solutions.", "para": 10},

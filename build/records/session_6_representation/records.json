@@ -48,6 +48,7 @@
     {"from": "boltzmann_machine", "rel_type": "extends", "to": "shannon_information", "evidence": "Boltzmann variables are binary (1,0) as in Shannon information; learning is a type of compression.", "para": 58},
     {"from": "deep_learning", "rel_type": "composed_of", "to": "boltzmann_machine", "evidence": "The essential ideas behind deep learning are captured by Hinton's Boltzmann machines.", "para": 58},
     {"from": "boltzmann_machine", "rel_type": "proposed_by", "to": "geoff_hinton", "evidence": "Hinton invented the Boltzmann machine.", "para": 58},
+    {"from": "deep_learning", "rel_type": "proposed_by", "to": "geoff_hinton", "evidence": "The essential ideas behind deep learning are captured by Hinton's Boltzmann machines.", "para": 61},
     {"from": "constraint_satisfaction_problem", "rel_type": "enables", "to": "knowledge_representation_and_reasoning", "evidence": "The KRR perspective in AI is the one implied by CSPs (constraints given, reasoned about).", "para": 72}
   ],
 
