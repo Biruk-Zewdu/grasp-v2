@@ -1,0 +1,71 @@
+name: ci
+
+# The eval bar, wired into CI (M4). Red here should block deploy — mark these
+# jobs as required status checks in branch protection. DB-touching steps run
+# only when the DATABASE_URL secret is set (they no-op on forks without it).
+# Safety: no untrusted github.event.* input is used in any run: command.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    name: web — typecheck · build · vitest (template)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    env:
+      SERVE_MODE: template # never makes a live model call in CI -> zero cost
+      SERVE_CORPUS_VERSION: v1
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      # build needs DATABASE_URL importable (lib/db/client); a dummy is fine when
+      # the secret is absent — the client is lazy and nothing connects at build.
+      - name: build
+        run: pnpm build
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://ci:ci@localhost:5432/ci' }}
+      # Unit (sequencer) always runs; integration + demo-smoke run only when a real
+      # DB is configured (they self-skip otherwise). Live smoke stays skipped
+      # (SERVE_MODE=template, no key) so CI never spends money.
+      - run: pnpm exec vitest run
+      - name: schema drift (DB <-> Drizzle)
+        if: ${{ env.DATABASE_URL != '' }}
+        run: pnpm db:drift
+
+  evals:
+    name: evals — aspirations · pluralism · schema-drift
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --frozen
+      - name: aspiration levels (Module G thresholds)
+        if: ${{ env.DATABASE_URL != '' }}
+        run: uv run python eval/aspirations.py v1
+      - name: pluralism preserved (no tension collapsed)
+        if: ${{ env.DATABASE_URL != '' }}
+        run: uv run python eval/pluralism.py v1
+      - name: schema drift (DB <-> Pydantic)
+        if: ${{ env.DATABASE_URL != '' }}
+        run: uv run python eval/schema_drift.py
