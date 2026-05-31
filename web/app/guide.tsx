@@ -2,27 +2,30 @@
 
 import { useState, useTransition } from "react";
 import { turn, expandSources } from "./actions";
-import type { AnswerCard } from "@/lib/guide/types";
+import type { AnswerCard, Catalog } from "@/lib/guide/types";
 import type { TensionTable } from "@/lib/render";
 
-const EXAMPLES = [
-  "why can't AI just use common sense?",
-  "is bigger and more data always better for AI?",
-  "how should lots of disagreeing experts be combined?",
+// Agentic moves the learner can trigger on the current answer — each is a
+// templated follow-up the agent answers with full conversation context.
+const ACTIONS = [
+  { label: "Go deeper", q: "Go deeper on that — the reasoning behind it." },
+  { label: "Give an example", q: "Give a concrete example that illustrates that." },
+  { label: "The opposing view", q: "What's the strongest opposing view, and when does it hold?" },
+  { label: "Explain simply", q: "Explain that more simply, for a beginner." },
 ];
 
-export default function Guide() {
+export default function Guide({ catalog }: { catalog: Catalog }) {
   const [sessionId] = useState(
     () => globalThis.crypto?.randomUUID?.() ?? String(Math.random()),
   );
-  const [cards, setCards] = useState<AnswerCard[]>([]);
+  const [thread, setThread] = useState<AnswerCard[]>([]);
+  const [active, setActive] = useState<number | null>(null);
   const [sources, setSources] = useState<Record<number, string[]>>({});
   const [input, setInput] = useState("");
   const [pending, start] = useTransition();
 
-  // Last few turns, as plain text, so follow-ups have context without unbounded cost.
   function history(): string {
-    return cards
+    return thread
       .slice(-4)
       .map((c) => `You: ${c.question}\nGuide: ${c.framing} ${c.prose}`)
       .join("\n\n");
@@ -33,134 +36,210 @@ export default function Guide() {
     const h = history();
     setInput("");
     start(async () => {
+      let card: AnswerCard;
       try {
-        const card = await turn(sessionId, q, h);
-        setCards((cs) => [...cs, card]);
+        card = await turn(sessionId, q, h);
       } catch {
-        setCards((cs) => [
-          ...cs,
-          {
-            question: q,
-            framing: q,
-            prose: "That didn't reach the server. Check your connection and try again.",
-            table: null,
-            sourceConceptIds: [],
-            outOfScope: false,
-          },
-        ]);
+        card = {
+          question: q,
+          framing: q,
+          prose: "That didn't reach the server. Check your connection and try again.",
+          table: null,
+          sourceConceptIds: [],
+          outOfScope: false,
+        };
       }
+      setThread((t) => {
+        const nt = [...t, card];
+        setActive(nt.length - 1);
+        return nt;
+      });
     });
   }
 
   function showSource(i: number, ids: number[]) {
     start(async () => {
       const s = await expandSources(ids);
-      setSources((prev) => ({ ...prev, [i]: s.length ? s : ["No source passage on file."] }));
+      setSources((p) => ({ ...p, [i]: s.length ? s : ["No source passage on file."] }));
     });
   }
 
-  return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-6 px-6 py-12">
-      <header className="space-y-1">
-        <h1 className="text-xl font-semibold tracking-tight">Grasp</h1>
-        <p className="text-xs text-neutral-500">One idea at a time.</p>
-      </header>
+  const current = active != null ? thread[active] : null;
 
-      {cards.length === 0 ? (
-        <section className="flex flex-1 flex-col justify-center gap-4">
-          <label className="text-sm text-neutral-700">Ask anything about AI ideas.</label>
-          <AskBox value={input} onChange={setInput} onSubmit={() => send(input)} pending={pending} />
-          <ul className="space-y-1.5">
-            {EXAMPLES.map((ex) => (
-              <li key={ex}>
-                <button
-                  className="text-left text-sm text-neutral-500 underline-offset-2 hover:underline"
-                  onClick={() => send(ex)}
-                >
-                  {ex}
-                </button>
-              </li>
+  return (
+    <main className="grid h-dvh grid-cols-1 divide-neutral-200 lg:grid-cols-[260px_1fr_340px] lg:divide-x">
+      {/* LEFT — Explore */}
+      <aside className="flex flex-col gap-6 overflow-y-auto border-b border-neutral-200 p-5 lg:border-b-0">
+        <div>
+          <h1 className="text-lg font-semibold tracking-tight">Grasp</h1>
+          <p className="text-xs text-neutral-500">One idea at a time.</p>
+        </div>
+        <Section title="Big questions">
+          <div className="space-y-1">
+            {catalog.questions.map((q) => (
+              <button
+                key={q.id}
+                onClick={() => send(q.text)}
+                disabled={pending}
+                className="block w-full rounded-lg px-2 py-1.5 text-left text-xs leading-snug text-neutral-700 hover:bg-neutral-100 disabled:opacity-50"
+              >
+                {q.text}
+              </button>
             ))}
-          </ul>
-        </section>
-      ) : (
-        <section className="flex flex-1 flex-col gap-5">
-          {cards.map((c, i) => (
-            <AnswerView
-              key={i}
-              card={c}
-              source={sources[i] ?? null}
-              onSource={() => showSource(i, c.sourceConceptIds)}
-              pending={pending}
-            />
-          ))}
-          {pending && <p className="text-xs text-neutral-400">Thinking…</p>}
-          <div className="mt-auto border-t border-neutral-100 pt-4">
-            <AskBox
-              value={input}
-              onChange={setInput}
-              onSubmit={() => send(input)}
-              pending={pending}
-              placeholder="Ask a follow-up, or a new question…"
-            />
           </div>
-        </section>
-      )}
+        </Section>
+        <Section title="Key ideas">
+          <div className="flex flex-wrap gap-1.5">
+            {catalog.ideas.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => send(`What is ${c.name}, and why does it matter?`)}
+                disabled={pending}
+                className="rounded-full border border-neutral-200 px-2.5 py-1 text-xs text-neutral-600 hover:border-neutral-400 hover:text-neutral-900 disabled:opacity-50"
+              >
+                {c.name}
+              </button>
+            ))}
+          </div>
+        </Section>
+      </aside>
+
+      {/* MIDDLE — Answer canvas */}
+      <section className="flex flex-col overflow-y-auto p-6 lg:p-10">
+        {!current ? (
+          <div className="m-auto max-w-md space-y-3 text-center">
+            <p className="text-sm text-neutral-700">Ask anything about AI ideas.</p>
+            <p className="text-xs text-neutral-400">
+              Pick a big question or a key idea on the left, or type a question on the right.
+              You get a framed, grounded answer — with the tension preserved.
+            </p>
+          </div>
+        ) : (
+          <article className="mx-auto w-full max-w-2xl space-y-5">
+            <p className="text-xs text-neutral-400">
+              You asked: <span className="text-neutral-600">{current.question}</span>
+            </p>
+            {current.framing && current.framing !== current.question && (
+              <h2 className="text-lg font-semibold leading-snug text-neutral-900">
+                {current.framing}
+              </h2>
+            )}
+            {current.prose && (
+              <p className="text-sm leading-relaxed text-neutral-800">{current.prose}</p>
+            )}
+            {current.outOfScope && (
+              <p className="rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-600">
+                That's at the edge of this corpus — try a topic from the AI-foundations sessions.
+              </p>
+            )}
+            {current.table && (
+              <div className="space-y-1.5">
+                <Label>Two views — it depends</Label>
+                <TensionGrid table={current.table} />
+              </div>
+            )}
+            {active != null && sources[active] && <SourceBlock passages={sources[active]} />}
+
+            <div className="flex flex-wrap gap-2 border-t border-neutral-100 pt-4">
+              {ACTIONS.map((a) => (
+                <ActionBtn key={a.label} onClick={() => send(a.q)} disabled={pending}>
+                  {a.label}
+                </ActionBtn>
+              ))}
+              {current.sourceConceptIds.length > 0 && active != null && !sources[active] && (
+                <ActionBtn onClick={() => showSource(active, current.sourceConceptIds)} disabled={pending}>
+                  Show the source
+                </ActionBtn>
+              )}
+            </div>
+          </article>
+        )}
+        {pending && (
+          <p className="mx-auto mt-4 w-full max-w-2xl text-xs text-neutral-400">Thinking…</p>
+        )}
+      </section>
+
+      {/* RIGHT — Conversation */}
+      <aside className="flex max-h-dvh flex-col border-t border-neutral-200 p-5 lg:border-t-0">
+        <Label>Conversation</Label>
+        <div className="mt-3 flex-1 space-y-2 overflow-y-auto">
+          {thread.length === 0 ? (
+            <p className="text-xs text-neutral-400">Ask a question to start.</p>
+          ) : (
+            thread.map((c, i) => (
+              <button
+                key={i}
+                onClick={() => setActive(i)}
+                className={
+                  "block w-full rounded-lg border p-2.5 text-left text-xs leading-snug " +
+                  (i === active
+                    ? "border-neutral-400 bg-neutral-50 text-neutral-900"
+                    : "border-neutral-200 text-neutral-600 hover:bg-neutral-50")
+                }
+              >
+                {c.question}
+              </button>
+            ))
+          )}
+        </div>
+        <form
+          className="mt-3 flex gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            send(input);
+          }}
+        >
+          <input
+            className="flex-1 rounded-xl border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-neutral-400"
+            placeholder="Ask a follow-up…"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+          />
+          <button
+            type="submit"
+            disabled={pending || !input.trim()}
+            className="rounded-xl bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
+          >
+            {pending ? "…" : "Ask"}
+          </button>
+        </form>
+      </aside>
     </main>
   );
 }
 
-function AnswerView({
-  card,
-  source,
-  onSource,
-  pending,
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-2">
+      <Label>{title}</Label>
+      {children}
+    </div>
+  );
+}
+
+function Label({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">{children}</p>
+  );
+}
+
+function ActionBtn({
+  children,
+  onClick,
+  disabled,
 }: {
-  card: AnswerCard;
-  source: string[] | null;
-  onSource: () => void;
-  pending: boolean;
+  children: React.ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
 }) {
   return (
-    <article className="space-y-3 rounded-2xl border border-neutral-200 p-5">
-      <p className="text-xs text-neutral-400">
-        You asked: <span className="text-neutral-600">{card.question}</span>
-      </p>
-      {card.framing && card.framing !== card.question && (
-        <p className="text-sm font-medium text-neutral-900">{card.framing}</p>
-      )}
-      {card.prose && (
-        <p className="text-sm leading-relaxed text-neutral-800">{card.prose}</p>
-      )}
-
-      {card.outOfScope && (
-        <p className="rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-600">
-          That's at the edge of this corpus — try a topic from the AI-foundations sessions
-          (credit assignment, search, representation, reasoning, aggregation…).
-        </p>
-      )}
-
-      {card.table && (
-        <div className="space-y-1.5">
-          <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">
-            Two views — it depends
-          </p>
-          <TensionGrid table={card.table} />
-        </div>
-      )}
-
-      {source && <SourceBlock passages={source} />}
-
-      {card.sourceConceptIds.length > 0 && !source && (
-        <button
-          className="text-sm text-neutral-500 underline-offset-2 hover:underline disabled:opacity-50"
-          onClick={onSource}
-          disabled={pending}
-        >
-          Show the source
-        </button>
-      )}
-    </article>
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className="rounded-full border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-100 disabled:opacity-40"
+    >
+      {children}
+    </button>
   );
 }
 
@@ -204,50 +283,12 @@ function Cell({
 function SourceBlock({ passages }: { passages: string[] }) {
   return (
     <div className="space-y-2 rounded-xl border border-neutral-200 bg-neutral-50 p-4">
-      <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Source</p>
+      <Label>Source</Label>
       {passages.map((p, i) => (
         <p key={i} className="text-xs leading-relaxed text-neutral-600">
           “{p.length > 360 ? p.slice(0, 360) + "…" : p}”
         </p>
       ))}
     </div>
-  );
-}
-
-function AskBox({
-  value,
-  onChange,
-  onSubmit,
-  pending,
-  placeholder = "e.g. why can't AI just use common sense?",
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  onSubmit: () => void;
-  pending: boolean;
-  placeholder?: string;
-}) {
-  return (
-    <form
-      className="flex gap-2"
-      onSubmit={(e) => {
-        e.preventDefault();
-        onSubmit();
-      }}
-    >
-      <input
-        className="flex-1 rounded-xl border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-neutral-400"
-        placeholder={placeholder}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      />
-      <button
-        type="submit"
-        disabled={pending || !value.trim()}
-        className="rounded-xl bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
-      >
-        {pending ? "…" : "Ask"}
-      </button>
-    </form>
   );
 }

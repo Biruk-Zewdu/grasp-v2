@@ -2,6 +2,7 @@ import "server-only";
 import { and, eq, inArray, isNotNull } from "drizzle-orm";
 import { db } from "./client";
 import { corpusVersion, entity, claim, tension, provenance, textUnit } from "./schema";
+import type { Catalog } from "@/lib/guide/types";
 
 export type EntityRecord = {
   id: number;
@@ -101,6 +102,26 @@ export async function getArtifactContext(versionId: number): Promise<string> {
     `# CLAIMS\n${claimLines}`;
   _artifactContext.set(versionId, ctx);
   return ctx;
+}
+
+/** The dashboard browse catalog: contested "big questions" (tension dimensions,
+ *  shortened to the head before the colon) + "key ideas" (concept names A–Z). */
+export async function getCatalog(versionId: number): Promise<Catalog> {
+  const [ents, tens] = await Promise.all([
+    db.select({ id: entity.id, name: entity.name }).from(entity).where(eq(entity.corpusVersion, versionId)),
+    db.select({ id: tension.id, dimension: tension.dimension }).from(tension).where(eq(tension.corpusVersion, versionId)),
+  ]);
+  const shortQ = (dim: string | null): string => {
+    if (!dim) return "";
+    const head = dim.split(":")[0].trim();
+    return head ? head.charAt(0).toUpperCase() + head.slice(1) + "?" : "";
+  };
+  return {
+    questions: tens.map((t) => ({ id: t.id, text: shortQ(t.dimension) })).filter((q) => q.text),
+    ideas: ents
+      .map((e) => ({ id: e.id, name: e.name }))
+      .sort((a, b) => a.name.localeCompare(b.name)),
+  };
 }
 
 /** Concepts (id, name, definition) — used by the deterministic template fallback. */
