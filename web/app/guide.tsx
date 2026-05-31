@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { startGoal, forward, submitProbe, expandSource } from "./actions";
+import { startGoal, forward, submitProbe, expandSource, goDeeper } from "./actions";
 import { initialState, type GuideState, type Coverage } from "@/lib/guide/types";
 import type { Step } from "@/lib/render";
 
 const EXAMPLES = [
   "why does deep learning struggle with reasoning?",
   "when does reinforcement learning fail?",
-  "what is the watchmaker parable?",
+  "what's the difference between Shannon and Simon information?",
 ];
 
 export default function Guide() {
@@ -16,6 +16,7 @@ export default function Guide() {
     initialState(globalThis.crypto?.randomUUID?.() ?? String(Math.random())),
   );
   const [step, setStep] = useState<Step | null>(null);
+  const [topic, setTopic] = useState<string | null>(null);
   const [coverage, setCoverage] = useState<Coverage | null>(null);
   const [source, setSource] = useState<string[] | null>(null);
   const [goal, setGoal] = useState("");
@@ -35,7 +36,19 @@ export default function Guide() {
       const adv = await startGoal(state, text);
       setState(adv.state);
       setStep(adv.step);
+      setTopic(adv.gap ? null : text.trim());
       setGoal("");
+    });
+  }
+
+  function onDeeper() {
+    const id = step?.kind === "briefing" ? step.entityId : null;
+    if (id == null) return;
+    setSource(null);
+    start(async () => {
+      const adv = await goDeeper(state, id);
+      setState(adv.state);
+      setStep(adv.step);
     });
   }
 
@@ -95,6 +108,11 @@ export default function Guide() {
 
       {step && (
         <section className="flex flex-1 flex-col gap-5">
+          {topic && (
+            <p className="text-xs text-neutral-400">
+              Exploring: <span className="text-neutral-600">{topic}</span>
+            </p>
+          )}
           <StepCard step={step} coverage={coverage} />
 
           {source && <SourceBlock passages={source} />}
@@ -112,10 +130,20 @@ export default function Guide() {
               </Button>
             </div>
           ) : step.kind === "stop" ? null : (
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
               <Button onClick={onForward} pending={pending}>
                 Continue
               </Button>
+              {step.kind === "briefing" &&
+                step.pullPoints.some((p) => p.tier === 1) && (
+                  <button
+                    className="text-sm text-neutral-500 underline-offset-2 hover:underline disabled:opacity-50"
+                    onClick={onDeeper}
+                    disabled={pending}
+                  >
+                    Go deeper →
+                  </button>
+                )}
               {(step.kind === "briefing" || step.kind === "tension") && !source && (
                 <button
                   className="text-sm text-neutral-500 underline-offset-2 hover:underline disabled:opacity-50"

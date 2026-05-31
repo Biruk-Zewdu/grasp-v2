@@ -65,6 +65,34 @@ d("serve pipeline (frozen v1)", () => {
     expect(sawTension).toBe(true);
   });
 
+  it("each scripted demo goal routes and walks to satisfice via a tension", async () => {
+    const v = await frozenVersion("v1");
+    const graph = await loadGraph(v!.id);
+    const ents = await getEntitiesForVersion(v!.id);
+    const goals = [
+      "why does deep learning struggle with reasoning?",
+      "when does reinforcement learning fail?",
+      "what's the difference between Shannon and Simon information?",
+    ];
+    for (const goal of goals) {
+      const m = keywordMatch(goal, ents);
+      expect("entityId" in m, `routed: ${goal}`).toBe(true);
+      const target = (m as { entityId: number }).entityId;
+      const st = { target, seen: [] as number[], grasped: [] as number[], probed: [] as number[], seenTensions: [] as number[] };
+      let sawTension = false;
+      let stopped = false;
+      for (let i = 0; i < 300; i++) {
+        const ref = nextStep(graph, st);
+        if (ref.kind === "stop") { stopped = true; break; }
+        if (ref.kind === "entity") { st.seen = [...new Set([...st.seen, ref.entityId])]; st.grasped = [...new Set([...st.grasped, ref.entityId])]; }
+        else if (ref.kind === "probe") { const p = graph.probes.find((x) => x.id === ref.probeId)!; st.probed = [...new Set([...st.probed, ...p.conceptIds])]; st.grasped = [...new Set([...st.grasped, ...p.conceptIds])]; }
+        else if (ref.kind === "tension") { sawTension = true; st.seenTensions = [...new Set([...st.seenTensions, ref.tensionId])]; }
+      }
+      expect(stopped, `satisficed: ${goal}`).toBe(true);
+      expect(sawTension, `tension: ${goal}`).toBe(true);
+    }
+  });
+
   it("every tension renders as a two-column table with BOTH sides (g11)", async () => {
     const v = await frozenVersion("v1");
     const graph = await loadGraph(v!.id);

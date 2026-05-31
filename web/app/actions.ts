@@ -9,7 +9,7 @@ import {
   getProvenanceForEntity,
 } from "@/lib/db/records";
 import { loadGraph } from "@/lib/db/graph";
-import { nextStep } from "@/lib/sequencer";
+import { nextStep, type SeqGraph } from "@/lib/sequencer";
 import { renderEntity, renderTension, renderProbe, renderStop, type Step } from "@/lib/render";
 import { classifyGoal } from "@/lib/index";
 import { checkProbe } from "@/lib/probe";
@@ -35,6 +35,15 @@ function gapStep(goal: string): Step {
   };
 }
 
+// An unsurfaced tension in a concept's neighbourhood (itself or a related concept).
+function neighbourhoodTension(graph: SeqGraph, entityId: number, seenTensions: number[]) {
+  const seen = new Set(seenTensions);
+  const relevant = new Set<number>([entityId, ...(graph.related?.get(entityId) ?? [])]);
+  return graph.tensions.find(
+    (t) => !seen.has(t.id) && t.conceptIds.some((c) => relevant.has(c)),
+  );
+}
+
 // Internal: run the sequencer once and render the chosen record.
 async function advance(state: GuideState): Promise<Advance> {
   const v = await frozenVersion(SERVE_CORPUS_VERSION);
@@ -53,7 +62,7 @@ async function advance(state: GuideState): Promise<Advance> {
   if (ref.kind === "entity") {
     const rec = await getEntity(ref.entityId);
     if (!rec) return { step: renderStop(), state };
-    const hasTension = graph.tensions.some((t) => t.conceptIds.includes(ref.entityId));
+    const hasTension = !!neighbourhoodTension(graph, ref.entityId, state.seenTensions);
     const step = await renderEntity(rec, state.sessionId, { hasTension });
     return { step, state: withSeen(state, ref.entityId) };
   }
@@ -109,6 +118,19 @@ export async function submitProbe(
     ...adv,
     coverage: { covered: result.covered, total: probe.expectedSignals.length, grasped: result.grasped },
   };
+}
+
+/** Pull deeper: surface this concept's tension (the rival views + when each
+ *  holds) on demand, rather than waiting for the sequencer to reach it. */
+export async function goDeeper(state: GuideState, entityId: number): Promise<Advance> {
+  const v = await frozenVersion(SERVE_CORPUS_VERSION);
+  if (!v) return { step: noVersionStep(), state };
+  const graph = await loadGraph(v.id);
+  const t = neighbourhoodTension(graph, entityId, state.seenTensions);
+  if (!t) return advance(state); // nothing deeper here — just move on
+  const rec = await getTension(t.id);
+  if (!rec) return advance(state);
+  return { step: renderTension(rec), state: withSeenTension(state, t.id) };
 }
 
 /** Depth tier 3: the source passages behind a concept (raw records, no model). */
