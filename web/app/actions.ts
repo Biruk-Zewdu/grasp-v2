@@ -4,6 +4,7 @@ import { SERVE_CORPUS_VERSION } from "@/lib/server/env";
 import {
   frozenVersion,
   getEntity,
+  getConceptContext,
   getTension,
   getProbe,
   getProvenanceForEntity,
@@ -91,7 +92,8 @@ async function step(
     const rec = await getEntity(ref.entityId);
     if (!rec) return { step: renderStop(), next: progress };
     const hasTension = !!neighbourhoodTension(graph, ref.entityId, progress.seenTensions);
-    const r = await renderEntity(rec, userId, { hasTension });
+    const context = await getConceptContext(ref.entityId, versionId);
+    const r = await renderEntity(rec, userId, { hasTension, context });
     s = r.step;
     usage = r.usage;
     next = { ...progress, seen: uniq([...progress.seen, ref.entityId]) };

@@ -1,6 +1,6 @@
 import "server-only";
 import { structuredCall } from "@/lib/server/model";
-import type { EntityRecord, TensionRecord, ProbeRecord } from "@/lib/db/records";
+import type { EntityRecord, TensionRecord, ProbeRecord, ConceptContext } from "@/lib/db/records";
 
 // A Step is composed at serve time and never stored (store atoms, compose steps).
 // It is a plain serializable object so it can cross the server->client boundary.
@@ -24,24 +24,50 @@ export type Step =
 // gesture log / cost observability). Absent in template mode.
 export type ModelUsage = { model?: string; tokens?: number };
 
-/** Briefing. The model (if live) only *phrases* the definition — it cannot add
- *  facts (strict tool-use + explicit instruction). Template falls back to the
- *  record's own definition verbatim, so this works with no key at zero cost. */
+/** Briefing — the grounded reasoner (SERVE_DESIGN §9). The model REASONS over the
+ *  retrieved sub-graph (definition + relations + claims): it explains what the
+ *  concept is and why it matters, may connect the supplied records and give an
+ *  illuminating example, but every factual statement must be supported by those
+ *  records — no facts/names/numbers beyond them. Template mode falls back to the
+ *  record's definition verbatim, so it still works with no key at zero cost. */
 export async function renderEntity(
   e: EntityRecord,
   sessionId: string,
-  opts: { hasTension: boolean },
+  opts: { hasTension: boolean; context?: ConceptContext },
 ): Promise<{ step: Step; usage?: ModelUsage }> {
   let point = e.definition ?? e.name;
 
-  const phrased = await structuredCall<{ point: string }>({
+  const ctx = opts.context;
+  const relLines = (ctx?.relations ?? [])
+    .map((r) => `- ${r.relType.replace(/_/g, " ")}: ${r.name}`)
+    .join("\n");
+  const claimLines = (ctx?.claims ?? [])
+    .map(
+      (c) =>
+        `- "${c.proposition}" — ${c.thinker ?? "?"}, ${c.paradigm}${
+          c.conditions ? `; holds when ${c.conditions}` : ""
+        }`,
+    )
+    .join("\n");
+
+  const reasoned = await structuredCall<{ point: string }>({
     sessionId,
-    role: "render",
+    role: "reason",
     system:
-      "You phrase one course concept for a learner in 1-2 plain sentences. " +
-      "Use ONLY the supplied definition. Do NOT add facts, examples, names, or " +
-      "claims that are not in it.",
-    user: `Concept: ${e.name}\nType: ${e.type}\nDefinition: ${e.definition ?? ""}`,
+      "You are a careful study guide helping a learner understand ONE AI concept " +
+      "well enough to use it. Reasoning ONLY over the supplied records (the " +
+      "definition, the concept's relations, and the claims made about it), explain " +
+      "what it is and why it matters. You MAY connect the supplied relations and " +
+      "claims, draw out the 'why', and give one short illuminating example — but " +
+      "every factual statement must be supported by the supplied records. Do NOT " +
+      "introduce facts, names, numbers, or claims that are not in them; if the " +
+      "records are thin, say less rather than invent. Write a tight, briefing-sized " +
+      "answer (3-5 plain, concrete sentences). No headings, no lists.",
+    user:
+      `Concept: ${e.name} (${e.type})\n` +
+      `Definition: ${e.definition ?? "(none on file)"}\n` +
+      (relLines ? `\nRelations:\n${relLines}\n` : "") +
+      (claimLines ? `\nClaims about it:\n${claimLines}\n` : ""),
     schemaName: "briefing",
     schema: {
       type: "object",
@@ -49,10 +75,10 @@ export async function renderEntity(
       required: ["point"],
       additionalProperties: false,
     },
-    maxTokens: 300,
+    maxTokens: 500,
   });
-  if (phrased.ok && phrased.data.point.trim()) point = phrased.data.point.trim();
-  const usage = phrased.ok ? { model: phrased.model, tokens: phrased.tokens } : undefined;
+  if (reasoned.ok && reasoned.data.point.trim()) point = reasoned.data.point.trim();
+  const usage = reasoned.ok ? { model: reasoned.model, tokens: reasoned.tokens } : undefined;
 
   const pullPoints: PullPoint[] = [];
   if (opts.hasTension) pullPoints.push({ tier: 1, label: "When does each view apply?" });

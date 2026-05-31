@@ -6,7 +6,9 @@ import "server-only";
 
 export type ServeMode = "template" | "live";
 export type ProviderName = "openai" | "anthropic";
-export type Role = "render" | "classify" | "probe";
+// `reason` is the grounded-reasoner path (SERVE_DESIGN §9): a mid/large model
+// that reasons over the retrieved sub-graph, not the nano `render` paraphraser.
+export type Role = "render" | "reason" | "classify" | "probe";
 
 // Default is template: zero model calls, zero cost, no key required. The Guide
 // works fully in template mode (records fix the content; the model only phrases).
@@ -25,11 +27,13 @@ export const MODEL_PROVIDER: ProviderName =
 export const MODELS: Record<ProviderName, Record<Role, string>> = {
   openai: {
     render: process.env.OPENAI_MODEL_RENDER ?? "gpt-5.4-nano",
+    reason: process.env.OPENAI_MODEL_REASON ?? "gpt-5.4-mini",
     classify: process.env.OPENAI_MODEL_CLASSIFY ?? "gpt-5.4-mini",
     probe: process.env.OPENAI_MODEL_PROBE ?? "gpt-5.4-nano",
   },
   anthropic: {
     render: process.env.ANTHROPIC_MODEL_RENDER ?? "claude-haiku-4-5-20251001",
+    reason: process.env.ANTHROPIC_MODEL_REASON ?? "claude-sonnet-4-6",
     classify: process.env.ANTHROPIC_MODEL_CLASSIFY ?? "claude-sonnet-4-6",
     probe: process.env.ANTHROPIC_MODEL_PROBE ?? "claude-haiku-4-5-20251001",
   },

@@ -4,6 +4,7 @@ import { db } from "./client";
 import {
   corpusVersion,
   entity,
+  relation,
   claim,
   tension,
   probe,
@@ -117,6 +118,54 @@ export async function getProbe(id: number): Promise<ProbeRecord | null> {
         tensionId: p.tensionId,
       }
     : null;
+}
+
+// The grounded reasoner's substrate (SERVE_DESIGN §9): the typed records around a
+// concept that the model is allowed to reason OVER (and only over). Outgoing
+// relations + the claims asserted about the concept. NOT the whole graph — the
+// node's neighbourhood, so the model synthesises without fabricating.
+export type ConceptContext = {
+  relations: { relType: string; name: string }[];
+  claims: {
+    proposition: string;
+    thinker: string | null;
+    paradigm: string;
+    conditions: string | null;
+  }[];
+};
+
+export async function getConceptContext(
+  entityId: number,
+  versionId: number,
+): Promise<ConceptContext> {
+  const [rels, claims] = await Promise.all([
+    db
+      .select({ relType: relation.relType, name: entity.name })
+      .from(relation)
+      .innerJoin(entity, eq(entity.id, relation.toEntity))
+      .where(and(eq(relation.corpusVersion, versionId), eq(relation.fromEntity, entityId))),
+    db
+      .select({
+        proposition: claim.proposition,
+        thinker: claim.thinker,
+        paradigm: claim.paradigm,
+        conditions: claim.conditions,
+        conceptIds: claim.conceptIds,
+      })
+      .from(claim)
+      .where(eq(claim.corpusVersion, versionId)),
+  ]);
+  return {
+    relations: rels.map((r) => ({ relType: r.relType, name: r.name })),
+    claims: claims
+      .filter((c) => (c.conceptIds ?? []).includes(entityId))
+      .map((c) => ({
+        proposition: c.proposition,
+        thinker: c.thinker,
+        paradigm: c.paradigm,
+        conditions: c.conditions,
+      })),
+  };
 }
 
 /** Depth tier 3: the source passages behind a concept's claims (raw, no model). */
