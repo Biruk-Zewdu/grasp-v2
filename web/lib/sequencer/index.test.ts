@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   nextStep,
+  nextPrereq,
   type SeqGraph,
   type SeqState,
   type Abstraction,
@@ -35,51 +36,38 @@ const state = (over: Partial<SeqState> = {}): SeqState => ({
   ...over,
 });
 
-describe("nextStep", () => {
-  it("starts at the deepest (most foundational) ungrasped prerequisite", () => {
-    expect(nextStep(graph(), state())).toEqual({ kind: "entity", entityId: 3 });
-  });
-
-  it("advances to the next prerequisite once the deepest is grasped", () => {
-    expect(nextStep(graph(), state({ grasped: [3] }))).toEqual({
-      kind: "entity",
-      entityId: 2,
-    });
-  });
-
-  it("probes a prerequisite that was seen but not yet grasped", () => {
-    // C shown but not demonstrated -> emit C's probe to convert seen->grasped
-    expect(nextStep(graph(), state({ seen: [3] }))).toEqual({
-      kind: "probe",
-      probeId: 100,
-    });
-  });
-
-  it("shows the target's briefing once all prerequisites are grasped", () => {
-    expect(nextStep(graph(), state({ grasped: [2, 3] }))).toEqual({
-      kind: "entity",
-      entityId: 1,
-    });
+describe("nextStep — target-first (begin at the difference, not a syllabus)", () => {
+  it("opens at the TARGET's briefing, not a prerequisite, even with prereqs unmet", () => {
+    // The learner asked about T; start there — prerequisites are not front-loaded.
+    expect(nextStep(graph(), state())).toEqual({ kind: "entity", entityId: 1 });
   });
 
   it("probes the target after its briefing is seen but not grasped", () => {
-    expect(
-      nextStep(graph(), state({ grasped: [2, 3], seen: [1] })),
-    ).toEqual({ kind: "probe", probeId: 101 });
+    expect(nextStep(graph(), state({ seen: [1] }))).toEqual({ kind: "probe", probeId: 101 });
   });
 
-  it("surfaces the target's tension once the target is grasped", () => {
-    expect(
-      nextStep(graph(), state({ grasped: [1, 2, 3], seen: [1] })),
-    ).toEqual({ kind: "tension", tensionId: 10 });
+  it("surfaces the target's tension once the target is done", () => {
+    expect(nextStep(graph(), state({ seen: [1], grasped: [1] }))).toEqual({
+      kind: "tension",
+      tensionId: 10,
+    });
   });
 
-  it("satisfices (stops) when target grasped and its tension surfaced", () => {
+  it("satisfices on the TARGET — prerequisites need not be grasped", () => {
+    // Target seen+grasped, its tension surfaced; prereqs 2,3 untouched -> stop.
     expect(
-      nextStep(
-        graph(),
-        state({ grasped: [1, 2, 3], seen: [1], seenTensions: [10] }),
-      ),
+      nextStep(graph(), state({ seen: [1], grasped: [1], seenTensions: [10] })),
+    ).toEqual({ kind: "stop" });
+  });
+
+  it("a missed target probe settles it (probed counts as done; no re-probe loop)", () => {
+    // seen + probed but not grasped, tension still open -> the catch, then stop.
+    expect(nextStep(graph(), state({ seen: [1], probed: [1] }))).toEqual({
+      kind: "tension",
+      tensionId: 10,
+    });
+    expect(
+      nextStep(graph(), state({ seen: [1], probed: [1], seenTensions: [10] })),
     ).toEqual({ kind: "stop" });
   });
 
@@ -87,17 +75,22 @@ describe("nextStep", () => {
     const out = nextStep(graph(), state());
     expect(["entity", "probe", "tension", "stop"]).toContain(out.kind);
   });
+});
 
-  it("does not re-probe a concept already probed (a miss opens depth, no loop)", () => {
-    // C seen + probed but NOT grasped -> treated as settled, advance to B
-    expect(
-      nextStep(graph(), state({ seen: [3], probed: [3] })),
-    ).toEqual({ kind: "entity", entityId: 2 });
+describe("nextPrereq — scaffolding surfaced on a breakdown (not front-loaded)", () => {
+  it("returns the deepest (most foundational) unmet prerequisite of a concept", () => {
+    expect(nextPrereq(graph(), state(), 1)).toBe(3);
   });
 
-  it("a target with no prerequisites goes straight to its own briefing", () => {
-    const g = graph();
-    g.prereqs = [];
-    expect(nextStep(g, state())).toEqual({ kind: "entity", entityId: 1 });
+  it("advances to the next prerequisite once the deepest is settled", () => {
+    expect(nextPrereq(graph(), state({ grasped: [3] }), 1)).toBe(2);
+  });
+
+  it("returns null when the concept's prerequisites are all settled", () => {
+    expect(nextPrereq(graph(), state({ grasped: [2, 3] }), 1)).toBeNull();
+  });
+
+  it("returns null for a concept with no prerequisites", () => {
+    expect(nextPrereq(graph(), state(), 3)).toBeNull();
   });
 });

@@ -101,8 +101,10 @@ function conceptProbeFor(graph: SeqGraph, id: number): SeqProbe | undefined {
 }
 
 // A concept stops blocking once grasped OR probed (a missed probe opens depth, it
-// does not trap the learner re-answering the same question).
-function isDone(state: SeqState, id: number): boolean {
+// does not trap the learner re-answering the same question). Only needs the
+// settled-sets, so it accepts any progress-shaped value (e.g. Progress).
+type Settled = Pick<SeqState, "grasped" | "probed">;
+function isDone(state: Settled, id: number): boolean {
   return state.grasped.includes(id) || state.probed.includes(id);
 }
 
@@ -138,22 +140,27 @@ export function difference(graph: SeqGraph, state: SeqState): Difference {
   };
 }
 
-/** Satisfice (SERVE_DESIGN §7): stop when the difference vector is empty on the
- *  goal's spine — prerequisites settled, the target grasped/probed, and its
- *  tension surfaced. "Good enough to reason", not "ran out of nodes". */
+/** Satisfice (SERVE_DESIGN §7): a good-enough grip on the TARGET — its briefing
+ *  seen, it's grasped/probed, and its tension surfaced. Prerequisites are NOT
+ *  required: we economise the learner's capacity and trust they may already hold
+ *  the foundations (begin at the difference, not a syllabus — §2). A foundation
+ *  surfaces only when a breakdown reveals it's actually missing (nextPrereq). */
 export function satisficed(graph: SeqGraph, state: SeqState): boolean {
   const d = difference(graph, state);
-  return (
-    d.unsettledPrereqs.length === 0 &&
-    d.targetSeen &&
-    d.targetDone &&
-    d.openTensionId === null
-  );
+  return d.targetSeen && d.targetDone && d.openTensionId === null;
+}
+
+/** Scaffolding on demand: the deepest unmet prerequisite of `conceptId`, or null.
+ *  Surfaced only when a breakdown (a missed concept probe) reveals a foundation is
+ *  missing — never front-loaded ahead of the learner's actual goal. */
+export function nextPrereq(graph: SeqGraph, state: Settled, conceptId: number): number | null {
+  const unmet = [...transitivePrereqs(graph, conceptId)].filter((p) => !isDone(state, p));
+  return unmet.length ? selectPrereq(graph, state, unmet) : null;
 }
 
 // Which unsettled prerequisite to reduce first: one that is "ready" (its own
 // prereqs settled), most foundational, then lowest id — deterministic.
-function selectPrereq(graph: SeqGraph, state: SeqState, prereqs: number[]): number {
+function selectPrereq(graph: SeqGraph, state: Settled, prereqs: number[]): number {
   const ready = prereqs.filter((p) => directPrereqs(graph, p).every((d) => isDone(state, d)));
   const pool = ready.length ? ready : prereqs;
   return [...pool].sort(
@@ -162,28 +169,18 @@ function selectPrereq(graph: SeqGraph, state: SeqState, prereqs: number[]): numb
 }
 
 /**
- * The next Step: reduce the highest-priority unmet difference via the connection
- * table (SERVE_DESIGN §6). Forward = the system applying the most valuable
- * operator across the relevant set. Pure — no model, no network, no clock.
+ * The next Step — TARGET-FIRST (SERVE_DESIGN §2, §6). The forward walk begins at
+ * the concept the learner asked about and stays on it; prerequisites are NOT a
+ * forced prefix (they surface only on a breakdown — see nextPrereq). Pure — no
+ * model, no network, no clock.
  *
- *   unsettled prerequisite  -> Briefing it (Probe it if seen-but-undemonstrated)
- *   target unseen           -> Briefing the target
- *   target undemonstrated   -> Probe the target
- *   open tension            -> the Catch
- *   nothing left            -> satisfice (stop)
+ *   target unseen          -> Briefing the target (its catch ships inline)
+ *   target undemonstrated  -> Probe the target
+ *   open tension           -> the Catch
+ *   nothing left           -> satisfice (good-enough grip on the target)
  */
 export function nextStep(graph: SeqGraph, state: SeqState): StepRef {
   const d = difference(graph, state);
-
-  // foundations first — Briefing, or a Probe if already seen but not demonstrated
-  if (d.unsettledPrereqs.length) {
-    const pick = selectPrereq(graph, state, d.unsettledPrereqs);
-    if (state.seen.includes(pick) && !state.probed.includes(pick)) {
-      const probe = conceptProbeFor(graph, pick);
-      if (probe) return { kind: "probe", probeId: probe.id };
-    }
-    return { kind: "entity", entityId: pick };
-  }
 
   if (!d.targetSeen) return { kind: "entity", entityId: state.target };
 

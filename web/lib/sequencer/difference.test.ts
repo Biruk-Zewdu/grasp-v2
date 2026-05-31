@@ -57,13 +57,14 @@ describe("difference — the learner's gap over the relevant set", () => {
   });
 });
 
-describe("satisficed — good-enough grip on the goal (the stop condition)", () => {
-  it("is false while any gap on the spine remains", () => {
-    expect(satisficed(graph(), state())).toBe(false);
-    expect(satisficed(graph(), state({ grasped: [1, 2, 3], seen: [1] }))).toBe(false); // tension still open
+describe("satisficed — good-enough grip on the TARGET (the stop condition)", () => {
+  it("is false until the target is seen, done, and its tension surfaced", () => {
+    expect(satisficed(graph(), state())).toBe(false); // target unseen
+    expect(satisficed(graph(), state({ seen: [1], grasped: [1] }))).toBe(false); // tension still open
   });
 
-  it("is true once prereqs are settled, the target is grasped, and its tension surfaced", () => {
-    expect(satisficed(graph(), state({ grasped: [1, 2, 3], seen: [1], seenTensions: [10] }))).toBe(true);
+  it("is true on the target alone — prerequisites need NOT be grasped", () => {
+    // 2 and 3 untouched; a good-enough grip on the target is enough to stop.
+    expect(satisficed(graph(), state({ seen: [1], grasped: [1], seenTensions: [10] }))).toBe(true);
   });
 });

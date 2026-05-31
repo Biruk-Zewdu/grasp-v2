@@ -251,6 +251,9 @@ function StepCard({ step, coverage }: { step: Step; coverage: Coverage | null })
         <p className="text-sm text-neutral-800">{step.prompt}</p>
       ) : (
         <div className="space-y-4">
+          {step.kind === "briefing" && step.frame && (
+            <p className="text-xs text-neutral-500">{step.frame}</p>
+          )}
           <p className="text-sm leading-relaxed text-neutral-800">{step.point}</p>
           {step.kind === "briefing" && step.catch && (
             <div className="space-y-1.5">

@@ -11,7 +11,7 @@ import {
   getProvenanceForEntity,
 } from "@/lib/db/records";
 import { loadGraph } from "@/lib/db/graph";
-import { nextStep, type SeqGraph } from "@/lib/sequencer";
+import { nextStep, nextPrereq, type SeqGraph } from "@/lib/sequencer";
 import {
   renderEntity,
   renderTension,
@@ -277,25 +277,48 @@ export async function submitProbe(
     };
 
     // BREAKDOWN (SERVE_DESIGN §8): a miss opens the deeper structure right where
-    // understanding is thin — the "why" of the probed concept's tension — instead
-    // of advancing. A hit just moves on. The miss never traps the learner (the
-    // concept is marked probed, so it won't be re-asked).
+    // understanding is thin, instead of advancing. A hit just moves on. The miss
+    // never traps the learner (the concept is marked probed, so it won't re-ask).
+    //  - a TENSION-probe miss -> the "why" (D2): why each side holds.
+    //  - a CONCEPT-probe miss -> the missing FOUNDATION the breakdown just revealed
+    //    (a prerequisite), framed so it isn't a non-sequitur.
     if (!result.grasped) {
-      const graph = await loadGraph(v.id);
-      const concept = probe.conceptIds[0];
-      const t =
-        probe.tensionId != null
-          ? { id: probe.tensionId }
-          : concept != null
-            ? neighbourhoodTension(graph, concept, [])
-            : undefined;
-      const bd = t ? await reasoningStep(userId, v.id, t.id, applied.target, "breakdown") : null;
-      if (bd) {
-        const next: Progress = t
-          ? { ...applied, seenTensions: uniq([...applied.seenTensions, t.id]) }
-          : applied;
-        await saveProgress(userId, v.id, next);
-        return { step: bd, state: toState(state.sessionId, next), coverage };
+      if (probe.tensionId != null) {
+        const bd = await reasoningStep(userId, v.id, probe.tensionId, applied.target, "breakdown");
+        if (bd) {
+          const next: Progress = {
+            ...applied,
+            seenTensions: uniq([...applied.seenTensions, probe.tensionId]),
+          };
+          await saveProgress(userId, v.id, next);
+          return { step: bd, state: toState(state.sessionId, next), coverage };
+        }
+      } else {
+        const concept = probe.conceptIds[0];
+        const graph = await loadGraph(v.id);
+        const prereqId = concept != null ? nextPrereq(graph, applied, concept) : null;
+        const rec = prereqId != null ? await getEntity(prereqId) : null;
+        if (rec && prereqId != null) {
+          const targetName =
+            applied.target != null ? (await getEntity(applied.target))?.name : null;
+          const context = await getConceptContext(prereqId, v.id);
+          const frame = targetName
+            ? `Building toward ${targetName} — the idea it rests on:`
+            : "The idea this rests on:";
+          const r = await renderEntity(rec, userId, { context, frame });
+          const next: Progress = { ...applied, seen: uniq([...applied.seen, prereqId]) };
+          await saveProgress(userId, v.id, next);
+          await logGesture({
+            userId,
+            gesture: "breakdown",
+            targetEntity: applied.target,
+            recordKind: r.step.kind,
+            recordId: prereqId,
+            model: r.usage?.model ?? null,
+            tokens: r.usage?.tokens ?? null,
+          });
+          return { step: r.step, state: toState(state.sessionId, next), coverage };
+        }
       }
     }
 

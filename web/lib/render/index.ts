@@ -21,7 +21,7 @@ export type TensionTable = {
   whenB: string;
 };
 export type Step =
-  | { kind: "briefing"; entityId: number; title: string; point: string; pullPoints: PullPoint[]; catch?: TensionTable }
+  | { kind: "briefing"; entityId: number; title: string; point: string; pullPoints: PullPoint[]; catch?: TensionTable; frame?: string }
   | { kind: "tension"; tensionId: number; title: string; point: string; table: TensionTable; pullPoints: PullPoint[] }
   | { kind: "probe"; probeId: number; title: string; prompt: string }
   | {
@@ -46,7 +46,7 @@ export type ModelUsage = { model?: string; tokens?: number };
 export async function renderEntity(
   e: EntityRecord,
   sessionId: string,
-  opts: { context?: ConceptContext; catch?: TensionTable },
+  opts: { context?: ConceptContext; catch?: TensionTable; frame?: string },
 ): Promise<{ step: Step; usage?: ModelUsage }> {
   let point = e.definition ?? e.name;
 
@@ -101,7 +101,15 @@ export async function renderEntity(
   pullPoints.push({ tier: 3, label: "Show the source" });
 
   return {
-    step: { kind: "briefing", entityId: e.id, title: e.name, point, pullPoints, catch: opts.catch },
+    step: {
+      kind: "briefing",
+      entityId: e.id,
+      title: e.name,
+      point,
+      pullPoints,
+      catch: opts.catch,
+      frame: opts.frame,
+    },
     usage,
   };
 }
