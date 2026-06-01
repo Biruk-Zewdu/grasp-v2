@@ -6,7 +6,8 @@ import type { AnswerCard, Catalog, GlossTerm } from "@/lib/guide/types";
 import type { TensionTable } from "@/lib/render";
 
 // Agentic moves the learner can trigger on the current answer — each is a
-// templated follow-up the agent answers with full conversation context.
+// templated follow-up the agent answers with full conversation context. These are
+// CONTINUATIONS: they extend the current build-up in the same cell (see below).
 const ACTIONS = [
   { label: "Go deeper", q: "Go deeper on that — the reasoning behind it." },
   { label: "Give an example", q: "Give a concrete example that illustrates that." },
@@ -14,46 +15,71 @@ const ACTIONS = [
   { label: "Explain simply", q: "Explain that more simply, for a beginner." },
 ];
 
+// The transcript is a list of GROUPS, not a flat list of cards. A new question
+// (ask box, a left-pane big question / key idea, a basics ladder, a rung, a key
+// term) starts a fresh group = a new cell. A CONTINUATION of the current thread
+// (Go deeper / example / opposing view / explain simply, or following a → branch)
+// appends a step INSIDE the last group's cell — because those steps are one
+// build-up, not separate questions. Steps stack and scroll within the one cell.
+type Group = AnswerCard[];
+
 export default function Guide({ catalog }: { catalog: Catalog }) {
   const [sessionId] = useState(
     () => globalThis.crypto?.randomUUID?.() ?? String(Math.random()),
   );
-  const [thread, setThread] = useState<AnswerCard[]>([]);
+  const [thread, setThread] = useState<Group[]>([]);
   const [active, setActive] = useState<number | null>(null);
-  const [sources, setSources] = useState<Record<number, string[]>>({});
+  // Revealed source passages, keyed by "groupIndex-stepIndex".
+  const [sources, setSources] = useState<Record<string, string[]>>({});
   const [input, setInput] = useState("");
   const [pending, start] = useTransition();
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // The session flows: when a new answer arrives, scroll it into view. Nothing is
-  // ever paged away — the whole transcript stays, scrollable (a tutor session).
+  const stepCount = thread.reduce((n, g) => n + g.length, 0);
+
+  // The session flows: whenever a step arrives (new group OR a continuation step),
+  // scroll the live edge into view and mark the last group active. Nothing is ever
+  // paged away — the whole transcript stays, scrollable (a tutor session).
   useEffect(() => {
     if (thread.length) {
       setActive(thread.length - 1);
       bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
     }
-  }, [thread.length]);
+  }, [stepCount, thread.length]);
 
   function history(): string {
     return thread
+      .flat()
       .slice(-4)
       .map((c) => `You: ${c.question}\nGuide: ${c.headline ? c.headline + ". " : ""}${c.reply}`)
       .join("\n\n");
   }
 
-  function push(card: AnswerCard) {
-    setThread((t) => [...t, card]);
+  // Start a new cell.
+  function pushGroup(card: AnswerCard) {
+    setThread((t) => [...t, [card]]);
+  }
+  // Append a step to the current (last) cell — a continuation of the build-up.
+  function pushStep(card: AnswerCard) {
+    setThread((t) => {
+      if (!t.length) return [[card]];
+      const next = t.slice();
+      next[next.length - 1] = [...next[next.length - 1], card];
+      return next;
+    });
   }
 
-  function send(q: string) {
+  // `continued` = is this a step in the current build-up, or a brand-new question?
+  function send(q: string, continued = false) {
     if (!q.trim() || pending) return;
     const h = history();
-    setInput("");
+    if (!continued) setInput("");
+    const add = continued && thread.length ? pushStep : pushGroup;
     start(async () => {
       try {
-        push(await turn(sessionId, q, h));
+        add(await turn(sessionId, q, h));
       } catch {
-        push(fallbackCard(q, "That didn't reach the server. Check your connection and try again."));
+        add(fallbackCard(q, "That didn't reach the server. Check your connection and try again."));
       }
     });
   }
@@ -63,23 +89,23 @@ export default function Guide({ catalog }: { catalog: Catalog }) {
     const h = history();
     start(async () => {
       try {
-        push(await basics(sessionId, topic, h));
+        pushGroup(await basics(sessionId, topic, h));
       } catch {
-        push(fallbackCard(`Start from the basics: ${topic}`, "That didn't reach the server."));
+        pushGroup(fallbackCard(`Start from the basics: ${topic}`, "That didn't reach the server."));
       }
     });
   }
 
-  function showSource(i: number, ids: number[]) {
+  function showSource(key: string, ids: number[]) {
     start(async () => {
       const s = await expandSources(ids);
-      setSources((p) => ({ ...p, [i]: s.length ? s : ["No source passage on file."] }));
+      setSources((p) => ({ ...p, [key]: s.length ? s : ["No source passage on file."] }));
     });
   }
 
-  function jumpTo(i: number) {
-    setActive(i);
-    document.getElementById(`turn-${i}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  function jumpTo(g: number) {
+    setActive(g);
+    document.getElementById(`group-${g}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   return (
@@ -120,7 +146,7 @@ export default function Guide({ catalog }: { catalog: Catalog }) {
         </Section>
       </aside>
 
-      {/* MIDDLE — Session transcript */}
+      {/* MIDDLE — Session transcript (one cell per build-up) */}
       <section className="flex flex-col overflow-y-auto p-6 lg:p-10">
         {thread.length === 0 ? (
           <div className="m-auto max-w-md space-y-3 text-center">
@@ -133,20 +159,21 @@ export default function Guide({ catalog }: { catalog: Catalog }) {
           </div>
         ) : (
           <div className="mx-auto w-full max-w-2xl space-y-8">
-            {thread.map((c, i) => (
-              <Turn
-                key={i}
-                id={`turn-${i}`}
-                card={c}
-                active={i === active}
-                last={i === thread.length - 1}
-                source={sources[i] ?? null}
+            {thread.map((group, g) => (
+              <BuildUp
+                key={g}
+                id={`group-${g}`}
+                group={group}
+                active={g === active}
+                live={g === thread.length - 1}
                 pending={pending}
+                sources={sources}
+                sourceKey={(s) => `${g}-${s}`}
                 onExplore={(term) => send(`What is ${term}, and why does it matter?`)}
                 onRung={(name) => send(`What is ${name}, and why does it matter?`)}
-                onAction={(q) => send(q)}
-                onBasics={() => startBasics(c.question)}
-                onSource={() => showSource(i, c.sourceConceptIds)}
+                onContinue={(q) => send(q, true)}
+                onBasics={(topic) => startBasics(topic)}
+                onSource={(s, ids) => showSource(`${g}-${s}`, ids)}
               />
             ))}
             {pending && <p className="text-xs text-neutral-400">Thinking…</p>}
@@ -162,19 +189,22 @@ export default function Guide({ catalog }: { catalog: Catalog }) {
           {thread.length === 0 ? (
             <p className="text-xs text-neutral-400">Ask a question to start.</p>
           ) : (
-            thread.map((c, i) => (
+            thread.map((group, g) => (
               <button
-                key={i}
-                onClick={() => jumpTo(i)}
+                key={g}
+                onClick={() => jumpTo(g)}
                 className={
                   "block w-full rounded-lg border-l-2 px-2.5 py-1.5 text-left text-xs leading-snug " +
-                  (i === active
+                  (g === active
                     ? "border-neutral-900 bg-neutral-50 text-neutral-900"
                     : "border-transparent text-neutral-500 hover:bg-neutral-50")
                 }
               >
-                {c.path ? "↳ basics: " : ""}
-                {c.question.replace(/^Start from the basics: /, "")}
+                {group[0].path ? "↳ basics: " : ""}
+                {group[0].question.replace(/^Start from the basics: /, "")}
+                {group.length > 1 && (
+                  <span className="ml-1 text-neutral-400">· {group.length} steps</span>
+                )}
               </button>
             ))
           )}
@@ -217,42 +247,100 @@ function fallbackCard(question: string, reply: string): AnswerCard {
   };
 }
 
-function Turn({
+// One build-up = one cell. Its steps stack and scroll inside the single bordered
+// cell; only the LIVE edge (last step of the last group) carries the action row
+// and clickable branches, so the learner advances the current thread in place.
+function BuildUp({
   id,
-  card,
+  group,
   active,
-  last,
-  source,
+  live,
   pending,
+  sources,
+  sourceKey,
   onExplore,
   onRung,
-  onAction,
+  onContinue,
   onBasics,
   onSource,
 }: {
   id: string;
-  card: AnswerCard;
+  group: AnswerCard[];
   active: boolean;
-  last: boolean;
-  source: string[] | null;
+  live: boolean;
   pending: boolean;
+  sources: Record<string, string[]>;
+  sourceKey: (step: number) => string;
   onExplore: (term: string) => void;
   onRung: (name: string) => void;
-  onAction: (q: string) => void;
-  onBasics: () => void;
-  onSource: () => void;
+  onContinue: (q: string) => void;
+  onBasics: (topic: string) => void;
+  onSource: (step: number, ids: number[]) => void;
 }) {
+  const topic = group[0].question;
   return (
     <article
       id={id}
       className={
-        "scroll-mt-6 space-y-4 rounded-2xl border p-5 transition-colors " +
+        "scroll-mt-6 rounded-2xl border p-5 transition-colors " +
         (active ? "border-neutral-300" : "border-neutral-200")
       }
     >
       <p className="text-xs text-neutral-400">
-        You asked: <span className="text-neutral-600">{card.question}</span>
+        You asked: <span className="text-neutral-600">{topic}</span>
       </p>
+
+      <div className="mt-4 divide-y divide-neutral-100">
+        {group.map((card, s) => (
+          <Step
+            key={s}
+            card={card}
+            first={s === 0}
+            source={sources[sourceKey(s)] ?? null}
+            pending={pending}
+            onExplore={onExplore}
+            onRung={onRung}
+            onSource={() => onSource(s, card.sourceConceptIds)}
+          />
+        ))}
+      </div>
+
+      {/* The live edge: branches + action row advance THIS build-up in place. */}
+      {live && (
+        <LiveEdge
+          last={group[group.length - 1]}
+          topic={topic}
+          pending={pending}
+          onContinue={onContinue}
+          onBasics={() => onBasics(topic)}
+        />
+      )}
+    </article>
+  );
+}
+
+// A single step within a build-up: the answer body. The first step has no top
+// padding; later steps are separated by a hairline divider so the build-up reads
+// as one continuous unit rather than separate cards.
+function Step({
+  card,
+  first,
+  source,
+  pending,
+  onExplore,
+  onRung,
+  onSource,
+}: {
+  card: AnswerCard;
+  first: boolean;
+  source: string[] | null;
+  pending: boolean;
+  onExplore: (term: string) => void;
+  onRung: (name: string) => void;
+  onSource: () => void;
+}) {
+  return (
+    <div className={"space-y-4 " + (first ? "" : "pt-5")}>
       {card.headline && card.headline !== card.question && (
         <h2 className="text-lg font-semibold leading-snug text-neutral-900">{card.headline}</h2>
       )}
@@ -292,12 +380,43 @@ function Turn({
 
       {source && <SourceBlock passages={source} />}
 
-      {card.branches.length > 0 && (
+      {card.sourceConceptIds.length > 0 && !source && (
+        <button
+          onClick={onSource}
+          disabled={pending}
+          className="text-xs font-medium text-neutral-500 underline-offset-2 hover:text-neutral-800 hover:underline disabled:opacity-40"
+        >
+          Show the source
+        </button>
+      )}
+    </div>
+  );
+}
+
+// The live edge of a build-up: the last step's forward branches plus the action
+// row. Everything here CONTINUES the current cell (onContinue), except the basics
+// ladder, which is its own flow.
+function LiveEdge({
+  last,
+  topic,
+  pending,
+  onContinue,
+  onBasics,
+}: {
+  last: AnswerCard;
+  topic: string;
+  pending: boolean;
+  onContinue: (q: string) => void;
+  onBasics: () => void;
+}) {
+  return (
+    <div className="mt-5 space-y-3 border-t border-neutral-100 pt-4">
+      {last.branches.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          {card.branches.map((b, n) => (
+          {last.branches.map((b, n) => (
             <button
               key={n}
-              onClick={() => onAction(b.ask)}
+              onClick={() => onContinue(b.ask)}
               disabled={pending}
               className="rounded-full border border-neutral-300 bg-neutral-50 px-3 py-1.5 text-xs text-neutral-700 hover:border-neutral-400 hover:bg-neutral-100 disabled:opacity-40"
             >
@@ -306,27 +425,17 @@ function Turn({
           ))}
         </div>
       )}
-
-      <div className="flex flex-wrap gap-2 border-t border-neutral-100 pt-4">
-        {last && (
-          <>
-            <ActionBtn onClick={onBasics} disabled={pending}>
-              Start from the basics
-            </ActionBtn>
-            {ACTIONS.map((a) => (
-              <ActionBtn key={a.label} onClick={() => onAction(a.q)} disabled={pending}>
-                {a.label}
-              </ActionBtn>
-            ))}
-          </>
-        )}
-        {card.sourceConceptIds.length > 0 && !source && (
-          <ActionBtn onClick={onSource} disabled={pending}>
-            Show the source
+      <div className="flex flex-wrap gap-2">
+        <ActionBtn onClick={onBasics} disabled={pending}>
+          Start from the basics
+        </ActionBtn>
+        {ACTIONS.map((a) => (
+          <ActionBtn key={a.label} onClick={() => onContinue(a.q)} disabled={pending}>
+            {a.label}
           </ActionBtn>
-        )}
+        ))}
       </div>
-    </article>
+    </div>
   );
 }
 
