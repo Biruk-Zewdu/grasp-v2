@@ -18,6 +18,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { turn, basics, expandSources } from "./actions";
+import { Logo } from "./logo";
 import type { AnswerCard, Catalog, GlossTerm } from "@/lib/guide/types";
 import type { TensionTable } from "@/lib/render";
 
@@ -161,10 +162,11 @@ export default function Guide({ catalog }: { catalog: Catalog }) {
     <div className="flex h-dvh flex-col bg-neutral-50 text-neutral-900">
       {/* TOP BAR — spans the full width so the app reads as one product */}
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-neutral-200 bg-white/80 px-5 backdrop-blur">
-        <div className="flex items-baseline gap-2.5">
-          <span className="text-base font-semibold tracking-tight">Grasp</span>
+        <div className="flex items-center gap-2.5">
+          <Logo className="h-6 w-6 text-neutral-900" />
+          <span className="text-base font-semibold tracking-tight">grasp</span>
           <span className="hidden text-xs text-neutral-400 sm:inline">
-            a guide to AI ideas — one at a time
+            — a guide to AI ideas, one at a time
           </span>
         </div>
         {pending && (
@@ -309,8 +311,8 @@ function EmptyState({
 }) {
   return (
     <div className="mx-auto flex h-full max-w-md flex-col items-center justify-center text-center">
-      <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl border border-neutral-200 bg-white text-lg shadow-sm">
-        ◓
+      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-neutral-200 bg-white shadow-sm">
+        <Logo className="h-7 w-7 text-neutral-900" />
       </div>
       <h2 className="text-base font-semibold text-neutral-900">Ask anything about AI ideas</h2>
       <p className="mt-1.5 text-sm leading-relaxed text-neutral-500">
