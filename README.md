@@ -26,4 +26,49 @@ Two languages on purpose: **Python** = validate + load only; everything serve-si
 
 ## Status
 
-Scaffold only — no implementation yet. Build order is the playbook's phase docs: **M0 → M1 → M2 → M3 → M4**.
+Live on Vercel over the frozen **v1** corpus. M0–M4 built; serve layer is the agentic Guide (`web/`).
+
+## Working on it (teammates)
+
+### Run it locally to try it out
+
+```bash
+git clone https://github.com/Biruk-Zewdu/grasp.git
+cd grasp/web
+cp .env.example .env.local      # then fill in the values — see below
+pnpm install
+pnpm dev                        # → http://localhost:3000
+```
+
+**Env values** (`web/.env.example` explains each):
+- The fastest start needs **no API key** — set `SERVE_MODE=template` and the whole
+  Guide runs from the frozen records at zero cost.
+- For live AI answers, set `SERVE_MODE=live` and use **your own** `OPENAI_API_KEY`.
+- Ask the owner for `DATABASE_URL` (or your own read-only role). Never commit `.env.local`.
+
+Before opening a PR, make sure it's clean:
+
+```bash
+pnpm typecheck
+SERVE_MODE=template pnpm build
+SERVE_MODE=template pnpm exec vitest run
+```
+
+### Submitting changes (PR workflow)
+
+`main` is protected — you can't push to it directly. Work on a branch and open a PR.
+
+```bash
+git checkout -b your-name/short-description   # one branch per change
+# ...make your changes, commit...
+git add -A
+git commit -m "what you changed and why"
+git push -u origin your-name/short-description
+```
+
+Then on GitHub: open a **Pull Request** into `main`. Vercel builds a **preview URL**
+for your branch automatically (production is untouched). The owner reviews and merges.
+
+- Keep one branch per logical change; rebase on `main` if it moves: `git fetch && git rebase origin/main`.
+- Never commit secrets (`.env.local` is gitignored — keep it that way).
+- ⚠️ Don't push to `main` directly.
