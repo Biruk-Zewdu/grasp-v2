@@ -67,15 +67,9 @@ export default function Dashboard({ data }: { data: DashboardData }) {
         {/* Tool grid */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <Tile
-            title="Lessons"
-            detail="Read it, section by section"
+            title="Understand"
+            detail="Read it, ask anything, go deeper"
             icon="📖"
-            onClick={() => learn()}
-          />
-          <Tile
-            title="Tutor"
-            detail="Ask, go deeper, push back"
-            icon="💬"
             onClick={() => learn()}
           />
           <Tile
