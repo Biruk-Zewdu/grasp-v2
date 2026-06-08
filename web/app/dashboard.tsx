@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Logo } from "./logo";
 import Assessment from "./assessment";
 import Flashcards from "./flashcards";
 import TensionView from "./tension-view";
+import { summary, type SummaryView } from "./hub-actions";
 import type { Dashboard as DashboardData } from "@/lib/db/records";
 
 // The document dashboard hub (StudyFetch-leaning): after a PDF builds, the learner
@@ -22,6 +23,12 @@ export default function Dashboard({ data }: { data: DashboardData }) {
     () => globalThis.crypto?.randomUUID?.() ?? String(Math.random()),
   );
   const [open, setOpen] = useState<Tool>(null);
+  const [sum, setSum] = useState<SummaryView | "loading">("loading");
+
+  useEffect(() => {
+    summary(sessionId, data.versionId).then((s) => setSum(s));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.versionId]);
 
   const understand = () => router.push(`/learn/${data.versionId}/understand`);
   const askFreely = (q?: string) =>
@@ -47,6 +54,39 @@ export default function Dashboard({ data }: { data: DashboardData }) {
             {data.tensionId != null ? " · 1 contested point" : ""}
           </p>
         </div>
+
+        {/* Concept-applied summary — explains the doc THROUGH its own concepts;
+            named concepts are clickable chips that open the guide on that idea. */}
+        {sum !== null && (
+          <div className="mb-6 rounded-2xl border border-neutral-200 bg-white p-5">
+            {sum === "loading" ? (
+              <div className="space-y-2">
+                <div className="h-3 w-3/4 animate-pulse rounded bg-neutral-200" />
+                <div className="h-3 w-full animate-pulse rounded bg-neutral-200" />
+                <div className="h-3 w-2/3 animate-pulse rounded bg-neutral-200" />
+              </div>
+            ) : (
+              <>
+                <p className="text-[15px] leading-relaxed text-neutral-800">
+                  {sum.text.replace(/\*\*/g, "")}
+                </p>
+                {sum.chips.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {sum.chips.map((c) => (
+                      <button
+                        key={c.id}
+                        onClick={() => askFreely(`What is ${c.name}, and why does it matter here?`)}
+                        className="rounded-full border border-neutral-200 px-2.5 py-1 text-xs text-neutral-600 transition-colors hover:border-neutral-300 hover:bg-neutral-50 hover:text-neutral-900"
+                      >
+                        {c.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
 
         {/* The Debate — hero card when a tension was detected (our differentiator) */}
         {data.tensionId != null && (
