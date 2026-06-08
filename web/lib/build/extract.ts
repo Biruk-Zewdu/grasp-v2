@@ -230,13 +230,17 @@ const ARTIFACT_SCHEMA = {
   additionalProperties: false,
 } as const;
 
+export type ExtractResult =
+  | { ok: true; artifact: Artifact }
+  | { ok: false; reason: string };
+
 /** Run the extraction operators over normalized text units. Returns the typed
- *  artifact, or null in template/no-key mode (the caller surfaces a friendly
- *  "live mode needed to build" — extraction is the one thing template can't fake). */
+ *  artifact, or a reason: "template-mode" (no live model — the one thing template
+ *  can't fake) vs a real failure (budget/api/db) so the caller can be honest. */
 export async function extractArtifact(
   units: TextUnit[],
   sessionId: string,
-): Promise<Artifact | null> {
+): Promise<ExtractResult> {
   const res = await structuredCall<Artifact>({
     sessionId,
     role: "extract",
@@ -244,13 +248,13 @@ export async function extractArtifact(
     user: `DOCUMENT (paragraphs tagged [#index]):\n\n${unitsForPrompt(units)}`,
     schemaName: "artifact",
     schema: ARTIFACT_SCHEMA as unknown as Record<string, unknown>,
-    maxTokens: 4000,
+    maxTokens: 8000,
   });
-  if (!res.ok) return null;
+  if (!res.ok) return { ok: false, reason: res.reason };
   const a = res.data;
   // Normalize the detected-tension invariant defensively (the model can't be
   // trusted to keep hasTension and tension perfectly in sync).
   if (!a.hasTension) a.tension = null;
   if (a.tension == null) a.hasTension = false;
-  return a;
+  return { ok: true, artifact: a };
 }

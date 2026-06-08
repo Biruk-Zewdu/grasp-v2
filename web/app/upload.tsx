@@ -244,6 +244,9 @@ function friendlyError(reason: string): string {
     case "no-input":
       return "Choose a PDF or paste some text first.";
     default:
+      if (reason.includes("budget")) return "Hit the usage limit for now — give it a minute and try again.";
+      if (reason.includes("api-error") || reason.includes("connection") || reason.includes("EMAXCONN"))
+        return "Couldn't reach the service to build the lesson. Try again in a moment.";
       return "Something went wrong building the lesson. Try again.";
   }
 }

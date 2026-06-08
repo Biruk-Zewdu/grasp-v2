@@ -45,13 +45,15 @@ export async function buildFromText(
   const versionId = await createBuildingVersion(label, opts.owner, opts.sourceName);
 
   try {
-    const artifact = await extractArtifact(units, opts.sessionId);
-    if (!artifact) {
+    const ex = await extractArtifact(units, opts.sessionId);
+    if (!ex.ok) {
       await markFailed(versionId);
-      // The one thing template mode can't fake — extraction needs a live model.
-      return { ok: false, reason: "extraction-unavailable", versionId };
+      // Be honest about WHY: only "template-mode" means "needs the live model";
+      // anything else (budget/api/db) is a real failure, surfaced as-is.
+      const reason = ex.reason === "template-mode" ? "extraction-unavailable" : ex.reason;
+      return { ok: false, reason, versionId };
     }
-    const result = await persistArtifact(versionId, units, artifact);
+    const result = await persistArtifact(versionId, units, ex.artifact);
     // Generate the doc-level pre/post assessment now, so it's ready when the
     // learner arrives (best-effort — the learning view works without it).
     try {
