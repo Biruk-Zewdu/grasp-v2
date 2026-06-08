@@ -52,9 +52,11 @@ function mkStep(card: AnswerCard): Step {
 export default function Guide({
   catalog,
   versionId = null,
+  initialQuestion = null,
 }: {
   catalog: Catalog;
   versionId?: number | null;
+  initialQuestion?: string | null;
 }) {
   const [sessionId] = useState(
     () => globalThis.crypto?.randomUUID?.() ?? String(Math.random()),
@@ -133,6 +135,16 @@ export default function Guide({
     });
   }
 
+  // Seed the conversation with the question that brought the learner here (a
+  // study-path subtopic or a tile click on the dashboard). Fires once.
+  const seeded = useRef(false);
+  useEffect(() => {
+    if (seeded.current || !initialQuestion?.trim()) return;
+    seeded.current = true;
+    send(initialQuestion);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialQuestion]);
+
   function startBasics(topic: string) {
     if (!topic.trim() || pending) return;
     const h = history();
@@ -184,6 +196,15 @@ export default function Guide({
       {/* TOP BAR — spans the full width so the app reads as one product */}
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-neutral-200 bg-white/80 px-5 backdrop-blur">
         <div className="flex items-center gap-2.5">
+          {versionId != null && (
+            <a
+              href={`/learn/${versionId}`}
+              className="rounded-lg px-2 py-1 text-sm text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700"
+              aria-label="Back to dashboard"
+            >
+              ←
+            </a>
+          )}
           <Logo className="h-6 w-6 text-neutral-900" />
           <span className="text-base font-semibold tracking-tight">grasp</span>
           <span className="hidden text-xs text-neutral-400 sm:inline">

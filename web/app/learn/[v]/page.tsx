@@ -1,12 +1,11 @@
 import { notFound } from "next/navigation";
-import Guide from "../../guide";
+import Dashboard from "../../dashboard";
 import { AuthInit } from "../../auth-init";
-import { getCatalog, versionStatus } from "@/lib/db/records";
-import type { Catalog } from "@/lib/guide/types";
+import { getDashboard, versionStatus } from "@/lib/db/records";
 
-// The learning view over a specific artifact version (Phase D): the Guide, the
-// lesson rail, and assessments all read THIS version id — uploaded or example.
-// Everything downstream (renderTension, provenance) is already version-parameterized.
+// The document dashboard hub (the StudyFetch-leaning landing after a build): a
+// home for this document with a grid of named tools over the study path. The
+// conversational Guide lives at /learn/[v]/guide.
 export const dynamic = "force-dynamic";
 
 export default async function LearnPage({ params }: { params: Promise<{ v: string }> }) {
@@ -17,11 +16,11 @@ export default async function LearnPage({ params }: { params: Promise<{ v: strin
   const status = await versionStatus(versionId).catch(() => null);
   if (!status || status.status !== "ready") notFound();
 
-  const catalog: Catalog = await getCatalog(versionId);
+  const data = await getDashboard(versionId);
   return (
     <>
       <AuthInit />
-      <Guide catalog={catalog} versionId={versionId} />
+      <Dashboard data={data} />
     </>
   );
 }

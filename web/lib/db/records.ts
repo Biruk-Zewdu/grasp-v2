@@ -1,7 +1,7 @@
 import "server-only";
 import { and, eq, inArray, isNotNull } from "drizzle-orm";
 import { db } from "./client";
-import { corpusVersion, entity, claim, tension, provenance, textUnit, subtopic } from "./schema";
+import { corpusVersion, entity, claim, tension, provenance, textUnit, subtopic, assessment } from "./schema";
 import type { Catalog } from "@/lib/guide/types";
 
 export type EntityRecord = {
@@ -201,6 +201,67 @@ export async function getCatalog(versionId: number): Promise<Catalog> {
       .map((e) => ({ id: e.id, name: e.name }))
       .sort((a, b) => a.name.localeCompare(b.name)),
   };
+}
+
+export type Dashboard = {
+  versionId: number;
+  title: string;
+  counts: { concepts: number; subtopics: number; claims: number };
+  subtopics: { id: number; title: string; summary: string | null }[];
+  tensionId: number | null; // the first detected tension (the "Debate" tile), if any
+  tensionDimension: string | null;
+  hasAssessment: boolean;
+};
+
+/** Everything the document dashboard hub needs in one read. */
+export async function getDashboard(versionId: number): Promise<Dashboard> {
+  const [ver, subs, ents, claims, tens, asmt] = await Promise.all([
+    db
+      .select({ sourceName: corpusVersion.sourceName, origin: corpusVersion.origin })
+      .from(corpusVersion)
+      .where(eq(corpusVersion.id, versionId))
+      .limit(1),
+    db
+      .select({ id: subtopic.id, title: subtopic.title, summary: subtopic.summary, ordinal: subtopic.ordinal })
+      .from(subtopic)
+      .where(eq(subtopic.corpusVersion, versionId)),
+    db.select({ id: entity.id }).from(entity).where(eq(entity.corpusVersion, versionId)),
+    db.select({ id: claim.id }).from(claim).where(eq(claim.corpusVersion, versionId)),
+    db
+      .select({ id: tension.id, dimension: tension.dimension })
+      .from(tension)
+      .where(eq(tension.corpusVersion, versionId))
+      .limit(1),
+    db.select({ id: assessment.id }).from(assessment).where(eq(assessment.corpusVersion, versionId)).limit(1),
+  ]);
+
+  const rawTitle = ver[0]?.sourceName ?? "Your document";
+  const title = rawTitle.replace(/^Example:\s*/, "").replace(/\.(pdf|txt|md)$/i, "");
+  return {
+    versionId,
+    title,
+    counts: { concepts: ents.length, subtopics: subs.length, claims: claims.length },
+    subtopics: subs
+      .sort((a, b) => a.ordinal - b.ordinal)
+      .map((s) => ({ id: s.id, title: s.title, summary: s.summary })),
+    tensionId: tens[0]?.id ?? null,
+    tensionDimension: tens[0]?.dimension ?? null,
+    hasAssessment: !!asmt[0],
+  };
+}
+
+/** Flashcards = the artifact's concepts (name ⇄ definition). No model — they
+ *  already exist as typed records, so this is free and always grounded. */
+export async function getFlashcards(
+  versionId: number,
+): Promise<{ id: number; term: string; definition: string }[]> {
+  const rows = await db
+    .select({ id: entity.id, name: entity.name, definition: entity.definition })
+    .from(entity)
+    .where(eq(entity.corpusVersion, versionId));
+  return rows
+    .filter((r) => r.definition && r.definition.trim())
+    .map((r) => ({ id: r.id, term: r.name, definition: r.definition! }));
 }
 
 /** Concepts (id, name, definition) — used by the deterministic template fallback. */
