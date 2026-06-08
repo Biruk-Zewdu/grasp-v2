@@ -23,7 +23,8 @@ export default function Dashboard({ data }: { data: DashboardData }) {
   );
   const [open, setOpen] = useState<Tool>(null);
 
-  const learn = (q?: string) =>
+  const understand = () => router.push(`/learn/${data.versionId}/understand`);
+  const askFreely = (q?: string) =>
     router.push(`/learn/${data.versionId}/guide${q ? `?q=${encodeURIComponent(q)}` : ""}`);
 
   return (
@@ -68,9 +69,9 @@ export default function Dashboard({ data }: { data: DashboardData }) {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <Tile
             title="Understand"
-            detail="Read it, ask anything, go deeper"
+            detail="Read it, section by section"
             icon="📖"
-            onClick={() => learn()}
+            onClick={understand}
           />
           <Tile
             title="Quiz"
@@ -87,6 +88,13 @@ export default function Dashboard({ data }: { data: DashboardData }) {
           />
         </div>
 
+        <button
+          onClick={() => askFreely()}
+          className="mt-3 text-xs text-neutral-400 underline-offset-2 hover:text-neutral-700 hover:underline"
+        >
+          …or just ask a question →
+        </button>
+
         {/* Study path */}
         {data.subtopics.length > 0 && (
           <div className="mt-10">
@@ -95,7 +103,7 @@ export default function Dashboard({ data }: { data: DashboardData }) {
               {data.subtopics.map((s, i) => (
                 <li key={s.id}>
                   <button
-                    onClick={() => learn(`Teach me about "${s.title}". ${s.summary ?? ""}`.trim())}
+                    onClick={understand}
                     className="flex w-full items-start gap-3 rounded-xl border border-neutral-200 bg-white p-4 text-left transition-colors hover:border-neutral-300 hover:bg-neutral-50"
                   >
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-xs font-medium text-neutral-600">

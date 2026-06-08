@@ -70,7 +70,7 @@ export default function Assessment({
           ) : questions.length === 0 ? (
             <p className="text-sm text-neutral-500">No assessment was generated for this document.</p>
           ) : result ? (
-            <Results questions={questions} result={result} delta={deltaInfo} phase={phase} />
+            <Results questions={questions} result={result} delta={deltaInfo} phase={phase} versionId={versionId} />
           ) : (
             <ol className="space-y-5">
               {questions.map((q, i) => (
@@ -121,13 +121,16 @@ function Results({
   result,
   delta,
   phase,
+  versionId,
 }: {
   questions: Q[];
   result: Graded;
   delta: { pre: number | null; post: number | null; total: number } | null;
   phase: "pre" | "post";
+  versionId: number;
 }) {
   const byId = new Map(questions.map((q) => [q.id, q]));
+  const missed = result.perQuestion.filter((r) => !r.correct).length;
   return (
     <div className="space-y-5">
       <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 text-center">
@@ -137,32 +140,75 @@ function Results({
         {phase === "post" && delta && delta.pre != null ? (
           <p className="mt-1 text-sm text-neutral-600">
             You went from <b>{delta.pre}</b> → <b>{delta.post}</b> out of {delta.total}.
-            {delta.post! > delta.pre ? " That's the learning, measured." : ""}
+            {delta.post! > delta.pre
+              ? " That's the learning, measured."
+              : delta.post! === delta.pre
+                ? " Same as before — the misses below are where to look next."
+                : ""}
           </p>
         ) : (
-          <p className="mt-1 text-xs text-neutral-400">
-            {phase === "pre" ? "Baseline saved. Now go learn — then check again." : "Saved."}
+          <p className="mt-1 text-xs text-neutral-500">
+            {missed === 0
+              ? "Nailed it. Read on to go deeper, or check again after."
+              : `${missed} to firm up — each is explained below, with where to learn it.`}
           </p>
         )}
       </div>
 
-      <ol className="space-y-3">
+      <ol className="space-y-2.5">
         {result.perQuestion.map((r, i) => {
           const q = byId.get(r.id);
           if (!q) return null;
           return (
-            <li key={r.id} className="rounded-lg border border-neutral-100 p-3">
+            <li
+              key={r.id}
+              className={
+                "rounded-xl border p-3.5 " +
+                (r.correct ? "border-neutral-100 bg-white" : "border-amber-200 bg-amber-50/40")
+              }
+            >
               <p className="text-sm font-medium text-neutral-800">
                 {i + 1}. {q.stem}
               </p>
-              <p className={"mt-1 text-xs " + (r.correct ? "text-green-700" : "text-red-600")}>
-                {r.correct ? "✓ Correct" : "✗"} — {q.options[r.answerIndex]}
-              </p>
-              {r.rationale && <p className="mt-1 text-xs leading-snug text-neutral-500">{r.rationale}</p>}
+
+              {/* what you picked vs the answer — a real diff, not just "go study" */}
+              <div className="mt-2 space-y-1 text-xs">
+                {!r.correct && (
+                  <p className="text-red-600">
+                    <span className="font-medium">You chose:</span> {q.options[r.chosenIndex]}
+                  </p>
+                )}
+                <p className="text-green-700">
+                  <span className="font-medium">{r.correct ? "✓ Correct:" : "Answer:"}</span> {q.options[r.answerIndex]}
+                </p>
+              </div>
+
+              {/* the teaching moment */}
+              {r.rationale && (
+                <p className="mt-2 rounded-lg bg-white/70 px-2.5 py-1.5 text-xs leading-snug text-neutral-600">
+                  {r.rationale}
+                </p>
+              )}
+
+              {!r.correct && (
+                <a
+                  href={`/learn/${versionId}/understand`}
+                  className="mt-2 inline-block text-xs font-medium text-neutral-700 underline-offset-2 hover:underline"
+                >
+                  Learn this →
+                </a>
+              )}
             </li>
           );
         })}
       </ol>
+
+      <a
+        href={`/learn/${versionId}/understand`}
+        className="block rounded-xl bg-neutral-900 px-4 py-2.5 text-center text-sm font-medium text-white transition-colors hover:bg-neutral-800"
+      >
+        {missed === 0 ? "Go deeper in the lessons" : "Study the misses"}
+      </a>
     </div>
   );
 }
