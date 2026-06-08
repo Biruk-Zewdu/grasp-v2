@@ -250,6 +250,16 @@ export async function getDashboard(versionId: number): Promise<Dashboard> {
   };
 }
 
+/** The corpus version a tension belongs to (for grounding the debate). */
+export async function tensionVersion(tensionId: number): Promise<number | null> {
+  const rows = await db
+    .select({ v: tension.corpusVersion })
+    .from(tension)
+    .where(eq(tension.id, tensionId))
+    .limit(1);
+  return rows[0]?.v ?? null;
+}
+
 /** Flashcards = the artifact's concepts (name ⇄ definition). No model — they
  *  already exist as typed records, so this is free and always grounded. */
 export async function getFlashcards(
