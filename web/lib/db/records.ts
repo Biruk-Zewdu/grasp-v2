@@ -1,7 +1,7 @@
 import "server-only";
 import { and, eq, inArray, isNotNull } from "drizzle-orm";
 import { db } from "./client";
-import { corpusVersion, entity, claim, tension, provenance, textUnit } from "./schema";
+import { corpusVersion, entity, claim, tension, provenance, textUnit, subtopic } from "./schema";
 import type { Catalog } from "@/lib/guide/types";
 
 export type EntityRecord = {
@@ -161,9 +161,13 @@ export async function getArtifactContext(versionId: number): Promise<string> {
 /** The dashboard browse catalog: contested "big questions" (tension dimensions,
  *  shortened to the head before the colon) + "key ideas" (concept names A–Z). */
 export async function getCatalog(versionId: number): Promise<Catalog> {
-  const [ents, tens] = await Promise.all([
+  const [ents, tens, subs] = await Promise.all([
     db.select({ id: entity.id, name: entity.name }).from(entity).where(eq(entity.corpusVersion, versionId)),
     db.select({ id: tension.id, dimension: tension.dimension }).from(tension).where(eq(tension.corpusVersion, versionId)),
+    db
+      .select({ id: subtopic.id, title: subtopic.title, summary: subtopic.summary, ordinal: subtopic.ordinal })
+      .from(subtopic)
+      .where(eq(subtopic.corpusVersion, versionId)),
   ]);
   const shortQ = (dim: string | null): string => {
     if (!dim) return "";
@@ -171,6 +175,9 @@ export async function getCatalog(versionId: number): Promise<Catalog> {
     return head ? head.charAt(0).toUpperCase() + head.slice(1) + "?" : "";
   };
   return {
+    subtopics: subs
+      .sort((a, b) => a.ordinal - b.ordinal)
+      .map((s) => ({ id: s.id, title: s.title, summary: s.summary })),
     questions: tens.map((t) => ({ id: t.id, text: shortQ(t.dimension) })).filter((q) => q.text),
     ideas: ents
       .map((e) => ({ id: e.id, name: e.name }))

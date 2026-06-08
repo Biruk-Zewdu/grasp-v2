@@ -186,6 +186,28 @@ export default function Guide({
       <main className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[264px_1fr_360px]">
         {/* LEFT — Explore */}
         <aside className="hidden min-h-0 flex-col gap-7 overflow-y-auto border-r border-neutral-200 bg-white p-5 lg:flex">
+          {catalog.subtopics.length > 0 && (
+            <Section title="Study path">
+              <ol className="-mx-1 space-y-0.5">
+                {catalog.subtopics.map((s, i) => (
+                  <li key={s.id}>
+                    <button
+                      onClick={() => send(`Teach me about "${s.title}". ${s.summary ?? ""}`.trim())}
+                      disabled={pending}
+                      className="block w-full rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-neutral-100 disabled:opacity-50"
+                    >
+                      <span className="text-[13px] font-medium leading-snug text-neutral-800">
+                        {i + 1}. {s.title}
+                      </span>
+                      {s.summary && (
+                        <span className="block text-xs leading-snug text-neutral-400">{s.summary}</span>
+                      )}
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            </Section>
+          )}
           <Section title="Big questions">
             <div className="-mx-1 space-y-0.5">
               {catalog.questions.map((q) => (

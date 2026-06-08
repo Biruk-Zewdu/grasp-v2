@@ -1,8 +1,10 @@
 import type { TensionTable } from "@/lib/render";
 
-// The browse catalog for the dashboard's left pane: the contested "big questions"
-// (tension dimensions) and the "key ideas" (concept names).
+// The browse catalog for the dashboard's left pane: the decomposition "study path"
+// (subtopics — the lesson rail), the contested "big questions" (tension
+// dimensions), and the "key ideas" (concept names).
 export type Catalog = {
+  subtopics: { id: number; title: string; summary: string | null }[];
   questions: { id: number; text: string }[];
   ideas: { id: number; name: string }[];
 };
