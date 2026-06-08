@@ -48,7 +48,13 @@ function mkStep(card: AnswerCard): Step {
   return { id, card };
 }
 
-export default function Guide({ catalog }: { catalog: Catalog }) {
+export default function Guide({
+  catalog,
+  versionId = null,
+}: {
+  catalog: Catalog;
+  versionId?: number | null;
+}) {
   const [sessionId] = useState(
     () => globalThis.crypto?.randomUUID?.() ?? String(Math.random()),
   );
@@ -118,7 +124,7 @@ export default function Guide({ catalog }: { catalog: Catalog }) {
     const add = continued && thread.length ? pushStep : pushGroup;
     start(async () => {
       try {
-        add(await turn(sessionId, q, h));
+        add(await turn(sessionId, q, h, versionId));
       } catch {
         add(fallbackCard(q, "That didn't reach the server. Check your connection and try again."));
       }
@@ -130,7 +136,7 @@ export default function Guide({ catalog }: { catalog: Catalog }) {
     const h = history();
     start(async () => {
       try {
-        pushGroup(await basics(sessionId, topic, h));
+        pushGroup(await basics(sessionId, topic, h, versionId));
       } catch {
         pushGroup(fallbackCard(`Start from the basics: ${topic}`, "That didn't reach the server."));
       }

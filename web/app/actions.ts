@@ -2,7 +2,7 @@
 
 import { SERVE_CORPUS_VERSION } from "@/lib/server/env";
 import {
-  frozenVersion,
+  resolveVersion,
   getTension,
   getProvenanceForEntity,
   getConceptBriefs,
@@ -20,6 +20,7 @@ export async function turn(
   sessionId: string,
   question: string,
   history: string,
+  versionId: number | null = null,
 ): Promise<AnswerCard> {
   const base: AnswerCard = {
     question,
@@ -33,8 +34,8 @@ export async function turn(
   if (!question.trim()) return base;
   try {
     const userId = await getUserId(sessionId);
-    const v = await frozenVersion(SERVE_CORPUS_VERSION);
-    if (!v) return { ...base, reply: "No frozen corpus is available.", outOfScope: true };
+    const v = await resolveVersion(versionId, SERVE_CORPUS_VERSION);
+    if (!v) return { ...base, reply: "No corpus is available.", outOfScope: true };
 
     const t0 = Date.now();
     const answer = await runTurn(question, history, v.id, userId);
@@ -83,6 +84,7 @@ export async function basics(
   sessionId: string,
   topic: string,
   history: string,
+  versionId: number | null = null,
 ): Promise<AnswerCard> {
   const base: AnswerCard = {
     question: `Start from the basics: ${topic}`,
@@ -95,7 +97,7 @@ export async function basics(
   };
   try {
     const userId = await getUserId(sessionId);
-    const v = await frozenVersion(SERVE_CORPUS_VERSION);
+    const v = await resolveVersion(versionId, SERVE_CORPUS_VERSION);
     if (!v) return base;
 
     const t0 = Date.now();

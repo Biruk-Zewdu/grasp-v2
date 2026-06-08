@@ -1,19 +1,17 @@
-import Guide from "./guide";
+import Upload from "./upload";
 import { AuthInit } from "./auth-init";
-import { frozenVersion, getCatalog } from "@/lib/db/records";
-import { SERVE_CORPUS_VERSION } from "@/lib/server/env";
-import type { Catalog } from "@/lib/guide/types";
+import { exampleVersion } from "@/lib/db/records";
 
-// The single learner-facing surface. Serve reads the live frozen artifact.
+// The landing surface (v2): upload → build → reveal. The learning view lives at
+// /learn/[v]. An "explore an example" shortcut points at a ready example version.
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
-  const v = await frozenVersion(SERVE_CORPUS_VERSION);
-  const catalog: Catalog = v ? await getCatalog(v.id) : { questions: [], ideas: [] };
+  const example = await exampleVersion().catch(() => null);
   return (
     <>
       <AuthInit />
-      <Guide catalog={catalog} />
+      <Upload exampleVersionId={example?.id ?? null} />
     </>
   );
 }

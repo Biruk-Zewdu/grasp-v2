@@ -22,6 +22,48 @@ export type TensionRecord = {
   claimB: { proposition: string; paradigm: string; thinker: string | null };
 };
 
+/** A ready example/frozen version, if any — the "explore an example" shortcut. */
+export async function exampleVersion(): Promise<{ id: number } | null> {
+  const frozen = await db
+    .select({ id: corpusVersion.id })
+    .from(corpusVersion)
+    .where(isNotNull(corpusVersion.frozenAt))
+    .limit(1);
+  if (frozen[0]) return frozen[0];
+  const ex = await db
+    .select({ id: corpusVersion.id })
+    .from(corpusVersion)
+    .where(and(eq(corpusVersion.origin, "example"), eq(corpusVersion.status, "ready")))
+    .limit(1);
+  return ex[0] ?? null;
+}
+
+/** Resolve which artifact a session learns over. v2 prefers an explicit uploaded
+ *  version id; falls back to the frozen/example corpus by label. Returns null if
+ *  neither resolves (no DB / nothing built). */
+export async function resolveVersion(
+  versionId: number | null,
+  fallbackLabel: string,
+): Promise<{ id: number } | null> {
+  if (versionId != null) {
+    const rows = await db
+      .select({ id: corpusVersion.id, status: corpusVersion.status })
+      .from(corpusVersion)
+      .where(eq(corpusVersion.id, versionId))
+      .limit(1);
+    if (rows[0] && rows[0].status === "ready") return { id: rows[0].id };
+  }
+  const fz = await frozenVersion(fallbackLabel);
+  if (fz) return { id: fz.id };
+  // last resort: any ready example version
+  const ex = await db
+    .select({ id: corpusVersion.id })
+    .from(corpusVersion)
+    .where(and(eq(corpusVersion.origin, "example"), eq(corpusVersion.status, "ready")))
+    .limit(1);
+  return ex[0] ?? null;
+}
+
 /** A built/building uploaded version's status — for the reveal UI to poll. */
 export async function versionStatus(
   versionId: number,
