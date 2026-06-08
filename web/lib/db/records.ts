@@ -22,6 +22,18 @@ export type TensionRecord = {
   claimB: { proposition: string; paradigm: string; thinker: string | null };
 };
 
+/** A built/building uploaded version's status — for the reveal UI to poll. */
+export async function versionStatus(
+  versionId: number,
+): Promise<{ id: number; status: string; sourceName: string | null } | null> {
+  const rows = await db
+    .select({ id: corpusVersion.id, status: corpusVersion.status, sourceName: corpusVersion.sourceName })
+    .from(corpusVersion)
+    .where(eq(corpusVersion.id, versionId))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
 /** The single frozen version serve reads (label + frozen). */
 export async function frozenVersion(label: string) {
   const rows = await db
