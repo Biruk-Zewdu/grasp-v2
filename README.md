@@ -24,4 +24,14 @@ instrument that executes operators over a knowledge representation.
 | `db/` · `schemas/` · `eval/` | Loader/belief helpers · Pydantic mirror · evals |
 
 ## Status
-Scaffolding. Build order = `V2_DESIGN.md` §7 phases **A → G** (A–G is the demo).
+**Phases A–G built** (the full demo arc): upload → reveal → learn (lesson + guide +
+verbatim tension) → pre/post assessment. Typecheck + build + tests green.
+
+**Before it runs, do the one manual step in [`SETUP.md`](SETUP.md)** — provision the
+brand-new Supabase project and apply migrations. Until then `pnpm dev` builds but DB
+reads fail. Building a lesson/assessment also needs `SERVE_MODE=live` + an API key
+(extraction is the one thing template mode can't fake); the example/explore path and
+the whole UI work without it.
+
+The demo arc (`V2_DESIGN.md` §8): "explore an example" for instant content, then upload
+a real PDF to show the transformation live, learn over it, and take the before→after check.
