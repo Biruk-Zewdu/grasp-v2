@@ -9,6 +9,7 @@ import {
 } from "@/lib/db/records";
 import { renderTension, type TensionTable } from "@/lib/render";
 import { runTurn, runBasics } from "@/lib/agent";
+import { getOrBuildLesson } from "@/lib/lesson";
 import { getUserId } from "@/lib/server/identity";
 import { logGap, logGesture } from "@/lib/server/log";
 import type { AnswerCard, GlossTerm, PathRung } from "@/lib/guide/types";
@@ -122,6 +123,60 @@ export async function basics(
     return { ...base, headline: result.headline, reply: result.reply, path };
   } catch {
     return { ...base, reply: "Couldn't build the basics path. Try again." };
+  }
+}
+
+/** A generated Lesson for a subtopic (Phase F): grounded teaching material, with a
+ *  verbatim tension if the subtopic genuinely turns on one. Rendered by the Guide's
+ *  existing Step UI (headline + prose + glossed key terms + tension table + sources). */
+export async function lesson(sessionId: string, subtopicId: number, title: string): Promise<AnswerCard> {
+  const base: AnswerCard = {
+    question: title,
+    headline: title,
+    reply: "",
+    table: null,
+    branches: [],
+    sourceConceptIds: [],
+    outOfScope: false,
+  };
+  try {
+    const userId = await getUserId(sessionId);
+    const content = await getOrBuildLesson(subtopicId, userId);
+    if (!content) {
+      return { ...base, reply: "Building this lesson needs the live model (SERVE_MODE=live)." };
+    }
+
+    let table: TensionTable | null = null;
+    if (content.tensionId != null) {
+      const rec = await getTension(content.tensionId);
+      table = rec ? renderTension(rec) : null;
+    }
+    const briefs = await getConceptBriefs(content.keyTermIds);
+    const glossary: GlossTerm[] = briefs
+      .filter((b) => b.definition)
+      .map((b) => ({ id: b.id, term: b.name, definition: b.definition! }));
+
+    await logGesture({
+      userId,
+      gesture: "lesson",
+      targetEntity: content.sourceConceptIds[0] ?? null,
+      recordKind: content.tensionId != null ? "tension" : "concept",
+      recordId: content.tensionId ?? content.sourceConceptIds[0] ?? null,
+      latencyMs: null,
+      model: null,
+      tokens: null,
+    });
+
+    return {
+      ...base,
+      headline: content.headline,
+      reply: content.body,
+      table,
+      sourceConceptIds: content.sourceConceptIds,
+      glossary,
+    };
+  } catch {
+    return { ...base, reply: "Couldn't build that lesson. Try again." };
   }
 }
 

@@ -17,7 +17,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { turn, basics, expandSources } from "./actions";
+import { turn, basics, expandSources, lesson } from "./actions";
 import { Logo } from "./logo";
 import type { AnswerCard, Catalog, GlossTerm } from "@/lib/guide/types";
 import type { TensionTable } from "@/lib/render";
@@ -143,6 +143,19 @@ export default function Guide({
     });
   }
 
+  // A study-path subtopic → a generated Lesson (Phase F). Starts a fresh cell; the
+  // Guide beside it carries the interaction (ask / go deeper / opposing view).
+  function startLesson(subtopicId: number, title: string) {
+    if (pending) return;
+    start(async () => {
+      try {
+        pushGroup(await lesson(sessionId, subtopicId, title));
+      } catch {
+        pushGroup(fallbackCard(title, "That didn't reach the server."));
+      }
+    });
+  }
+
   // Source toggle: load on first open, fold back (remove) when already open.
   function toggleSource(key: string, ids: number[]) {
     if (sources[key]) {
@@ -192,7 +205,7 @@ export default function Guide({
                 {catalog.subtopics.map((s, i) => (
                   <li key={s.id}>
                     <button
-                      onClick={() => send(`Teach me about "${s.title}". ${s.summary ?? ""}`.trim())}
+                      onClick={() => startLesson(s.id, s.title)}
                       disabled={pending}
                       className="block w-full rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-neutral-100 disabled:opacity-50"
                     >

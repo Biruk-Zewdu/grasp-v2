@@ -22,6 +22,24 @@ export type TensionRecord = {
   claimB: { proposition: string; paradigm: string; thinker: string | null };
 };
 
+/** A subtopic's title/summary/concepts — for the lesson generator. */
+export async function getSubtopic(
+  id: number,
+): Promise<{ id: number; title: string; summary: string | null; conceptIds: number[]; corpusVersion: number } | null> {
+  const rows = await db
+    .select({
+      id: subtopic.id,
+      title: subtopic.title,
+      summary: subtopic.summary,
+      conceptIds: subtopic.conceptIds,
+      corpusVersion: subtopic.corpusVersion,
+    })
+    .from(subtopic)
+    .where(eq(subtopic.id, id))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
 /** A ready example/frozen version, if any — the "explore an example" shortcut. */
 export async function exampleVersion(): Promise<{ id: number } | null> {
   const frozen = await db
