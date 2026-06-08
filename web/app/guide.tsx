@@ -18,6 +18,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { turn, basics, expandSources, lesson } from "./actions";
+import Assessment from "./assessment";
 import { Logo } from "./logo";
 import type { AnswerCard, Catalog, GlossTerm } from "@/lib/guide/types";
 import type { TensionTable } from "@/lib/render";
@@ -64,6 +65,7 @@ export default function Guide({
   const [sources, setSources] = useState<Record<string, string[]>>({});
   const [input, setInput] = useState("");
   const [pending, start] = useTransition();
+  const [assessPhase, setAssessPhase] = useState<"pre" | "post" | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const stepCount = thread.reduce((n, g) => n + g.length, 0);
@@ -189,12 +191,37 @@ export default function Guide({
           </span>
         </div>
         {pending && (
-          <span className="ml-auto flex items-center gap-1.5 text-xs text-neutral-400">
+          <span className="flex items-center gap-1.5 text-xs text-neutral-400">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-neutral-400" />
             thinking…
           </span>
         )}
+        {versionId != null && (
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={() => setAssessPhase("pre")}
+              className="rounded-full border border-neutral-200 px-3 py-1 text-xs text-neutral-600 transition-colors hover:border-neutral-300 hover:bg-neutral-50"
+            >
+              Pre-check
+            </button>
+            <button
+              onClick={() => setAssessPhase("post")}
+              className="rounded-full border border-neutral-200 px-3 py-1 text-xs text-neutral-600 transition-colors hover:border-neutral-300 hover:bg-neutral-50"
+            >
+              Post-check
+            </button>
+          </div>
+        )}
       </header>
+
+      {versionId != null && assessPhase && (
+        <Assessment
+          versionId={versionId}
+          sessionId={sessionId}
+          phase={assessPhase}
+          onClose={() => setAssessPhase(null)}
+        />
+      )}
 
       <main className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[264px_1fr_360px]">
         {/* LEFT — Explore */}

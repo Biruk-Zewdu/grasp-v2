@@ -8,6 +8,7 @@ import {
   markFailed,
   type PersistResult,
 } from "./persist";
+import { generateAssessment } from "@/lib/assessment";
 
 // The upload → artifact build pipeline (V2_DESIGN §3 / Phase B). Orchestrates:
 //   PDF/text → normalize (text units) → extract (operators) → persist (typed rows).
@@ -51,6 +52,13 @@ export async function buildFromText(
       return { ok: false, reason: "extraction-unavailable", versionId };
     }
     const result = await persistArtifact(versionId, units, artifact);
+    // Generate the doc-level pre/post assessment now, so it's ready when the
+    // learner arrives (best-effort — the learning view works without it).
+    try {
+      await generateAssessment(versionId, opts.sessionId);
+    } catch {
+      /* assessment is optional; never fail the build over it */
+    }
     return { ok: true, result };
   } catch (e) {
     await markFailed(versionId);
