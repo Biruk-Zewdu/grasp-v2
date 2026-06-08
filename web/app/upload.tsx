@@ -37,6 +37,7 @@ export default function Upload({ exampleVersionId }: { exampleVersionId: number 
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ versionId: number; conceptCount: number; hasTension: boolean } | null>(null);
+  const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Advance the narrated stages while building (caps just before the last so it
@@ -64,12 +65,23 @@ export default function Upload({ exampleVersionId }: { exampleVersionId: number 
     }
   }
 
-  function onFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+  function acceptFile(file: File | undefined | null) {
     if (!file) return;
     const form = new FormData();
     form.set("file", file);
     runBuild(form);
+  }
+
+  function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    acceptFile(e.target.files?.[0]);
+  }
+
+  // Drag-and-drop: we must preventDefault on BOTH dragover and drop, or the
+  // browser navigates to / opens the dropped file (the "new tab" bug).
+  function onDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragging(false);
+    acceptFile(e.dataTransfer.files?.[0]);
   }
 
   function onPaste() {
@@ -102,9 +114,22 @@ export default function Upload({ exampleVersionId }: { exampleVersionId: number 
       <div className="w-full space-y-4">
         <button
           onClick={() => fileRef.current?.click()}
-          className="flex w-full flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-neutral-300 bg-white px-6 py-10 text-center transition-colors hover:border-neutral-400 hover:bg-neutral-50"
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={onDrop}
+          className={
+            "flex w-full flex-col items-center gap-2 rounded-2xl border-2 border-dashed px-6 py-10 text-center transition-colors " +
+            (dragging
+              ? "border-neutral-500 bg-neutral-100"
+              : "border-neutral-300 bg-white hover:border-neutral-400 hover:bg-neutral-50")
+          }
         >
-          <span className="text-sm font-medium text-neutral-800">Drop a PDF, or click to choose</span>
+          <span className="text-sm font-medium text-neutral-800">
+            {dragging ? "Drop to build your lesson" : "Drop a PDF, or click to choose"}
+          </span>
           <span className="text-xs text-neutral-400">Works best on focused materials (~5–15 pages)</span>
         </button>
         <input ref={fileRef} type="file" accept=".pdf,.txt,.md" className="hidden" onChange={onFile} />
