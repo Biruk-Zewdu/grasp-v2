@@ -1,0 +1,92 @@
+{
+  "session": "session_6_knowledge_representation_and_reasoning",
+  "source_title": "session_6_knowledge_representation_and_reasoning",
+  "corpus_label": "v1-draft",
+  "note": "M1 (M4 source). Core fork: deep-learning approach (emergent bit-string patterns) vs mathematical-logic approach / KRR (explicit declarative facts + ontologies + formal reasoning). This is the professor's favored side and the architectural backbone of the product (ontology, elaboration tolerance).",
+
+  "entities": [
+    {"key": "knowledge_representation_and_reasoning", "name": "knowledge representation and reasoning", "type": "Paradigm", "abstraction": "paradigmatic", "paradigm": "mccarthy_krr",
+     "definition": "McCarthy's epistemological approach: get to know a problem first by representing general, stable facts/concepts about the world (a knowledge base) and reasoning about them logically (an inference engine), rather than searching or predicting."},
+    {"key": "commonsense_knowledge", "name": "commonsense knowledge", "type": "Problem", "abstraction": "foundational", "paradigm": "mccarthy_krr",
+     "definition": "The vast set of default assumptions about how the world generally works that most humans share; McCarthy argued the general problem of credit assignment ultimately reduces to representing and reasoning about it."},
+    {"key": "frame_problem", "name": "frame problem", "type": "Problem", "abstraction": "foundational", "paradigm": "mccarthy_krr",
+     "definition": "The challenge that to act intelligently a system must know not only what changes from one situation to the next but the vast amount that does NOT change — and cannot compute relevance without already knowing tons about the world."},
+    {"key": "advice_taker", "name": "Advice Taker", "type": "Example", "abstraction": "instance", "paradigm": "mccarthy_krr",
+     "definition": "McCarthy's 1959 envisioned AI system that learns by being told facts ('advice') in natural language, represents knowledge as concepts and facts usable across situations, and reasons logically to modify representations."},
+    {"key": "elaboration_tolerance", "name": "elaboration tolerance", "type": "Mechanism", "abstraction": "mechanism", "paradigm": "mccarthy_krr",
+     "definition": "The quality of a system where the effort required to add new information to its repository is proportional to the complexity of that information — efficiently 'taking out the trash' after each elaboration; requires default reasoning and expressive languages."},
+    {"key": "declarative_representation", "name": "declarative representation", "type": "Mechanism", "abstraction": "mechanism", "paradigm": "mccarthy_krr",
+     "definition": "Representing knowledge as stand-alone facts and concepts (as in a database, or McCarthy's Lisp lists) rather than procedurally as step-by-step sequences, because facts derive across far more situations than rigid procedures."},
+    {"key": "ontology", "name": "ontology", "type": "Representation", "abstraction": "mechanism", "paradigm": "mccarthy_krr",
+     "definition": "A categorization of phenomena into objects (entities) and their relationships; the mathematical-logic approach builds rich ontologies (e.g. Palantir) to precisely represent and reason about evolving situations."},
+    {"key": "john_mccarthy", "name": "John McCarthy", "type": "Thinker", "abstraction": null, "paradigm": "mccarthy_krr",
+     "definition": "Co-founder of the MIT AI lab (with Minsky) and of Stanford's; pioneered KRR, the Advice Taker, the frame problem, elaboration tolerance, and the Lisp language."},
+
+    {"key": "credit_assignment", "name": "credit assignment", "type": "Problem", "abstraction": "foundational", "paradigm": "neutral"},
+    {"key": "deep_learning", "name": "deep learning", "type": "Paradigm", "abstraction": "paradigmatic", "paradigm": "shannon"},
+    {"key": "simon_information", "name": "Simon information", "type": "Paradigm", "abstraction": "paradigmatic", "paradigm": "simon"},
+    {"key": "list", "name": "list", "type": "Representation", "abstraction": "mechanism", "paradigm": "simon"},
+    {"key": "search", "name": "search", "type": "Mechanism", "abstraction": "foundational", "paradigm": "neutral"}
+  ],
+
+  "relations": [
+    {"from": "knowledge_representation_and_reasoning", "rel_type": "addresses", "to": "credit_assignment", "evidence": "KRR reduces the general problem of credit assignment to representing and reasoning about commonsense knowledge.", "para": 1},
+    {"from": "knowledge_representation_and_reasoning", "rel_type": "addresses", "to": "frame_problem", "evidence": "KRR's strategy is to solve the frame problem via commonsense knowledge and reasoning.", "para": 17},
+    {"from": "commonsense_knowledge", "rel_type": "addresses", "to": "frame_problem", "evidence": "An intelligent system needs tons of commonsense knowledge to rule things out as irrelevant.", "para": 17},
+    {"from": "knowledge_representation_and_reasoning", "rel_type": "composed_of", "to": "commonsense_knowledge", "evidence": "Common sense is the base of knowledge KRR must represent and reason about.", "para": 19},
+    {"from": "knowledge_representation_and_reasoning", "rel_type": "composed_of", "to": "elaboration_tolerance", "evidence": "Having common sense requires elaboration tolerance.", "para": 28},
+    {"from": "knowledge_representation_and_reasoning", "rel_type": "composed_of", "to": "ontology", "evidence": "The logic approach constructs ontologies to structure knowledge for reasoning.", "para": 43},
+    {"from": "knowledge_representation_and_reasoning", "rel_type": "exemplified_by", "to": "advice_taker", "evidence": "The Advice Taker is McCarthy's vision of a KRR system.", "para": 11},
+    {"from": "declarative_representation", "rel_type": "enables", "to": "elaboration_tolerance", "evidence": "Declarative facts can be added/removed in a controlled manner, supporting elaboration tolerance.", "para": 22},
+    {"from": "declarative_representation", "rel_type": "composed_of", "to": "list", "evidence": "McCarthy's Lisp represents all knowledge declaratively as lists.", "para": 23},
+    {"from": "knowledge_representation_and_reasoning", "rel_type": "extends", "to": "simon_information", "evidence": "KRR represents knowledge as patterns in lists, in Simon's tradition.", "para": 23},
+    {"from": "knowledge_representation_and_reasoning", "rel_type": "proposed_by", "to": "john_mccarthy", "evidence": "McCarthy pioneered KRR.", "para": 3},
+    {"from": "advice_taker", "rel_type": "proposed_by", "to": "john_mccarthy", "evidence": "McCarthy's 1959 Advice Taker.", "para": 11},
+    {"from": "frame_problem", "rel_type": "proposed_by", "to": "john_mccarthy", "evidence": "McCarthy named the frame problem in 1969.", "para": 13},
+    {"from": "deep_learning", "rel_type": "addresses", "to": "commonsense_knowledge", "evidence": "The deep-learning approach to KRR represents commonsense knowledge as bit-string patterns.", "para": 36},
+    {"from": "knowledge_representation_and_reasoning", "rel_type": "contradicts", "to": "deep_learning", "evidence": "Two paradigmatically-different approaches to representing and reasoning about knowledge.", "para": 35}
+  ],
+
+  "claims": [
+    {"key": "c1", "proposition": "For McCarthy, learning to assign credit is a process of representing and reasoning about knowledge of phenomena as they relate to real-world situations, so the general credit-assignment problem reduces to representing and reasoning about commonsense knowledge.",
+     "concept_keys": ["knowledge_representation_and_reasoning", "commonsense_knowledge", "credit_assignment"], "claim_type": "definitional", "thinker": "John McCarthy", "paradigm": "mccarthy_krr", "conditions": null, "status": "established",
+     "provenance": [{"para": 1, "asserted_by": "McCarthy (via S6-KRR §1)"}]},
+    {"key": "c2", "proposition": "The Advice Taker would learn new representations just by being told facts in natural language, represent knowledge as concepts and facts usable across situations, and reason about them logically — making AI like a public utility anyone can customize by conversation.",
+     "concept_keys": ["advice_taker", "knowledge_representation_and_reasoning"], "claim_type": "definitional", "thinker": "John McCarthy", "paradigm": "mccarthy_krr", "conditions": null, "status": "established",
+     "provenance": [{"para": 12, "asserted_by": "McCarthy 1959 (via S6-KRR §2.1)"}]},
+    {"key": "c3", "proposition": "The frame problem is that to be intelligent a system must represent not just what changes from one situation to the next but the vast amount that does NOT change; relevance itself cannot be computed without already knowing tons about the world.",
+     "concept_keys": ["frame_problem", "commonsense_knowledge"], "claim_type": "causal", "thinker": "John McCarthy", "paradigm": "mccarthy_krr", "conditions": null, "status": "established",
+     "provenance": [{"para": 16, "asserted_by": "McCarthy 1969 (via S6-KRR §2.2)"}]},
+    {"key": "c4", "proposition": "Knowledge representations must be declarative (stand-alone facts and concepts, as in Lisp lists) rather than procedural, because facts can be implicitly derived across far more situations than step-by-step procedures.",
+     "concept_keys": ["declarative_representation", "list"], "claim_type": "causal", "thinker": "John McCarthy", "paradigm": "mccarthy_krr", "conditions": null, "status": "established",
+     "provenance": [{"para": 21, "asserted_by": "McCarthy (via S6-KRR §3.1)"}]},
+    {"key": "c5", "proposition": "Elaboration tolerance means the effort required to add new information to a knowledge base is proportional to the complexity of that information; it requires default reasoning and adequately expressive languages.",
+     "concept_keys": ["elaboration_tolerance", "declarative_representation"], "claim_type": "definitional", "thinker": "John McCarthy", "paradigm": "mccarthy_krr", "conditions": null, "status": "established",
+     "provenance": [{"para": 30, "asserted_by": "McCarthy (via S6-KRR §4)"}]},
+    {"key": "c6", "proposition": "The deep-learning approach to KRR represents knowledge as bit-string patterns (vector databases) with context engineering and RAG; it scales impressively but offers little support for the frame problem and no principled elaboration in McCarthy's sense.",
+     "concept_keys": ["deep_learning", "commonsense_knowledge"], "claim_type": "contradictory", "thinker": "Geoff Hinton", "paradigm": "shannon", "conditions": "phenomena are mostly given and abundant data exists", "status": "contested",
+     "provenance": [{"para": 41, "asserted_by": "course notes (S6-KRR §5.1)"}]},
+    {"key": "c7", "proposition": "The mathematical-logic approach represents knowledge explicitly as formal statements and ontologies and reasons with explicit procedures; it offers precision, interpretability, control, directly addresses the frame problem and elaboration tolerance, but is harder to build at scale today.",
+     "concept_keys": ["knowledge_representation_and_reasoning", "ontology"], "claim_type": "contradictory", "thinker": "John McCarthy", "paradigm": "mccarthy_krr", "conditions": "correctness, interpretability, and control matter (planning, scientific reasoning, structured decisions)", "status": "contested",
+     "provenance": [{"para": 43, "asserted_by": "course notes (S6-KRR §5.2)"}]}
+  ],
+
+  "tensions": [
+    {"key": "t1", "claim_a": "c6", "claim_b": "c7", "dimension": "how to represent and reason about commonsense knowledge: emergent statistical patterns in bit strings (deep learning) vs. explicit declarative facts and ontologies reasoned over by formal procedures (mathematical logic)",
+     "conditions_a": "The deep-learning approach fits when phenomena are mostly given and abundant data exists: it scales to vast data and users and generates implicit knowledge — but does not address the frame problem and offers no principled way to add, modify, or remove knowledge proportional to its complexity.",
+     "conditions_b": "The mathematical-logic approach fits when correctness, interpretability, and control matter (planning, scientific reasoning, structured decision-making): it represents knowledge explicitly and reasons with formal procedures, directly addressing the frame problem and elaboration tolerance — but is harder to construct at scale for now.",
+     "session_keys": ["s6krr"]}
+  ],
+
+  "probes": [
+    {"kind": "concept", "concept_keys": ["frame_problem", "declarative_representation", "elaboration_tolerance"], "tension_key": null,
+     "prompt": "What is McCarthy's frame problem, and why does it imply intelligence can't be just heuristics or statistical prediction? How do declarative representation and elaboration tolerance help address it?",
+     "expected_signals": [
+       "States the frame problem: a system must know what does NOT change across situations, not only what does.",
+       "Explains why heuristics/prediction alone fail: relevance can't be computed without vast commonsense knowledge.",
+       "Notes declarative facts/concepts generalize across situations far better than rigid procedures.",
+       "Defines elaboration tolerance: effort to add knowledge is proportional to its complexity (controlled add/remove).",
+       "Does not claim deep learning has simply solved this — keeps the limitation open."
+     ]}
+  ]
+}

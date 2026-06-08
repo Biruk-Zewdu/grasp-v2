@@ -1,0 +1,91 @@
+{
+  "session": "session_8_reasoning_physical_world",
+  "source_title": "session_8_reasoning_physical_world",
+  "corpus_label": "v1-draft",
+  "note": "M1 (Module 6; the product's TMS/belief layer). Core fork: machine-learning 'world models' vs Sussman's propagator model. Reframes credit assignment as debugging; introduces qualitative reasoning, first principles, and truth maintenance (in/out justifications).",
+
+  "entities": [
+    {"key": "debugging", "name": "debugging", "type": "Mechanism", "abstraction": "foundational", "paradigm": "society",
+     "definition": "Reframing credit assignment as constructing and repairing tentative causal interpretations of physical systems — troubleshooting (the representation is right, the system has bugs) or theory formation (the representation has bugs); generate-test-and-debug."},
+    {"key": "causal_interpretation", "name": "causal interpretation", "type": "Representation", "abstraction": "mechanism", "paradigm": "society",
+     "definition": "A threshold-understanding representation of how a physical system functions (not just how its parts are assembled but how they produce behavior), reasoned about to identify and resolve bugs; a tentative 'theory' that can itself be debugged."},
+    {"key": "qualitative_reasoning", "name": "qualitative reasoning", "type": "Mechanism", "abstraction": "mechanism", "paradigm": "society",
+     "definition": "Reasoning about a physical system's functioning without precise numbers — de Kleer's 'envisioning', running a qualitative simulation in the mind's eye; functioning is understood qualitatively before it can be described quantitatively."},
+    {"key": "first_principles_reasoning", "name": "first principles reasoning", "type": "Mechanism", "abstraction": "mechanism", "paradigm": "society",
+     "definition": "Constraint propagation using a small number of stable, fundamental 'laws' of a domain (e.g. voltage laws), expressed in a domain-specific language, rather than acquiring countless heuristics or representing an entire system."},
+    {"key": "truth_maintenance_system", "name": "truth maintenance system", "type": "Mechanism", "abstraction": "mechanism", "paradigm": "society",
+     "definition": "Sussman's dependency network supplementing the constraint network: a locally-stored memory of tentative assumptions whose justifications are labeled 'in' or 'out', making reasoning dependency-directed and letting bugs be traced to the assumption that caused them."},
+    {"key": "world_model", "name": "world model", "type": "Mechanism", "abstraction": "mechanism", "paradigm": "shannon",
+     "definition": "A deep-learning approach that learns physical regularities from large volumes of Shannon-style data (image/sensor embeddings) to predict the next state of the world given an action; reasons indirectly via learned patterns rather than first principles."},
+
+    {"key": "credit_assignment", "name": "credit assignment", "type": "Problem", "abstraction": "foundational", "paradigm": "neutral"},
+    {"key": "propagator_model", "name": "propagator model", "type": "Mechanism", "abstraction": "mechanism", "paradigm": "society"},
+    {"key": "gerald_sussman", "name": "Gerald Sussman", "type": "Thinker", "abstraction": null, "paradigm": "society"},
+    {"key": "propagation", "name": "propagation", "type": "Mechanism", "abstraction": "mechanism", "paradigm": "neutral"},
+    {"key": "constraint", "name": "constraint", "type": "Mechanism", "abstraction": "mechanism", "paradigm": "neutral"},
+    {"key": "causal_net", "name": "causal net", "type": "Mechanism", "abstraction": "mechanism", "paradigm": "neutral"},
+    {"key": "means_ends_analysis", "name": "means-ends analysis", "type": "Paradigm", "abstraction": "paradigmatic", "paradigm": "simon"},
+    {"key": "deep_learning", "name": "deep learning", "type": "Paradigm", "abstraction": "paradigmatic", "paradigm": "shannon"},
+    {"key": "generate_and_test", "name": "generate-and-test", "type": "Mechanism", "abstraction": "foundational", "paradigm": "neutral"}
+  ],
+
+  "relations": [
+    {"from": "debugging", "rel_type": "extends", "to": "generate_and_test", "evidence": "Debugging makes the generate-and-test process into generate-test-and-debug.", "para": 8},
+    {"from": "debugging", "rel_type": "addresses", "to": "credit_assignment", "evidence": "Credit assignment is reframed as a debugging process over representations of physical systems.", "para": 5},
+    {"from": "debugging", "rel_type": "composed_of", "to": "causal_interpretation", "evidence": "Debugging constructs a causal interpretation of how a system functions.", "para": 10},
+    {"from": "debugging", "rel_type": "composed_of", "to": "first_principles_reasoning", "evidence": "Debugging reasons from a small set of domain first principles.", "para": 16},
+    {"from": "debugging", "rel_type": "composed_of", "to": "qualitative_reasoning", "evidence": "Debugging proceeds by qualitative envisioning of how a system functions.", "para": 19},
+    {"from": "qualitative_reasoning", "rel_type": "enables", "to": "causal_interpretation", "evidence": "Causal interpretations arise while envisioning a system qualitatively.", "para": 22},
+    {"from": "first_principles_reasoning", "rel_type": "composed_of", "to": "constraint", "evidence": "First principles are represented as constraints (confluences) that mutually influence variables.", "para": 24},
+    {"from": "truth_maintenance_system", "rel_type": "extends", "to": "propagation", "evidence": "A TMS supplements constraint propagation with a parallel dependency network of in/out justifications.", "para": 33},
+    {"from": "truth_maintenance_system", "rel_type": "enables", "to": "debugging", "evidence": "The dependency network lets bugs be traced to the assumptions that caused them.", "para": 32},
+    {"from": "propagator_model", "rel_type": "specializes", "to": "debugging", "evidence": "Sussman's propagator model distills the debugging approach.", "para": 39},
+    {"from": "world_model", "rel_type": "specializes", "to": "debugging", "evidence": "World models are the deep-learning approach to reasoning about the physical world.", "para": 36},
+    {"from": "world_model", "rel_type": "extends", "to": "deep_learning", "evidence": "World models are deep-learning models that learn from Shannon-style data.", "para": 36},
+    {"from": "propagator_model", "rel_type": "proposed_by", "to": "gerald_sussman", "evidence": "Sussman's propagator model.", "para": 39},
+    {"from": "debugging", "rel_type": "contradicts", "to": "means_ends_analysis", "evidence": "Debugging is dependency-directed and iterative, not chronological as in means-ends analysis.", "para": 34},
+    {"from": "debugging", "rel_type": "contradicts", "to": "causal_net", "evidence": "Debugging constructs causal structure from the ground up; causal nets assume the structure is given.", "para": 14}
+  ],
+
+  "claims": [
+    {"key": "c1", "proposition": "Credit assignment can be reframed as a debugging process: constructing and repairing tentative causal interpretations of physical systems — either troubleshooting a faulty system against a correct representation, or forming a theory when the representation itself is wrong.",
+     "concept_keys": ["debugging", "causal_interpretation", "credit_assignment"], "claim_type": "definitional", "thinker": null, "paradigm": "society", "conditions": null, "status": "established",
+     "provenance": [{"para": 7, "asserted_by": "course notes (S8 §2.1)"}]},
+    {"key": "c2", "proposition": "Debugging derives function from structure and constructs a representation of the problem from the ground up, unlike heuristic search, CSPs, and causal nets, which assume the basic shape of the problem (tree, constraints, causal structure) is already given.",
+     "concept_keys": ["debugging", "causal_net"], "claim_type": "contradictory", "thinker": null, "paradigm": "society", "conditions": "the structure and goals of the problem are not known in advance", "status": "established",
+     "provenance": [{"para": 9, "asserted_by": "course notes (S8 §2.2)"}]},
+    {"key": "c3", "proposition": "First-principles reasoning uses a small set of stable, fundamental domain 'laws' (e.g. voltage laws), expressed in a domain-specific language, to reason about physical systems — rather than acquiring countless heuristics or representing an entire system.",
+     "concept_keys": ["first_principles_reasoning"], "claim_type": "definitional", "thinker": null, "paradigm": "society", "conditions": "a domain has stable first principles known to be relevant", "status": "established",
+     "provenance": [{"para": 16, "asserted_by": "course notes (S8 §2.3)"}]},
+    {"key": "c4", "proposition": "Qualitative reasoning ('envisioning') analyzes how a physical system functions without precise numbers, because a system mid-debugging has no precise representation yet; functioning is most fundamentally understood qualitatively before it can be described quantitatively.",
+     "concept_keys": ["qualitative_reasoning", "causal_interpretation"], "claim_type": "causal", "thinker": "Johan de Kleer", "paradigm": "society", "conditions": "the representation is still partial (mid-debugging)", "status": "established",
+     "provenance": [{"para": 22, "asserted_by": "de Kleer & Forbus (via S8 §3.1)"}]},
+    {"key": "c5", "proposition": "A truth maintenance system supplements the constraint network with a dependency network of tentative assumptions labeled 'in' or 'out' by their justifications, making reasoning dependency-directed: bugs can be traced to the responsible assumption, provenance tracked, and retracted beliefs kept rather than deleted.",
+     "concept_keys": ["truth_maintenance_system", "propagation"], "claim_type": "definitional", "thinker": "Gerald Sussman", "paradigm": "society", "conditions": null, "status": "established",
+     "provenance": [{"para": 33, "asserted_by": "Sussman (via S8 §3.3)"}]},
+    {"key": "c6", "proposition": "Machine-learning world models learn physical regularities from Shannon-style data to predict next states (e.g. self-driving); they perform impressively but cannot be qualitatively reasoned about, cannot trace bugs via a dependency network, are not elaboration-tolerant, and demand vast processing capacity.",
+     "concept_keys": ["world_model", "deep_learning"], "claim_type": "contradictory", "thinker": null, "paradigm": "shannon", "conditions": "abundant sensor/visual data; phenomena mostly given", "status": "contested",
+     "provenance": [{"para": 38, "asserted_by": "course notes (S8 §4.1)"}]},
+    {"key": "c7", "proposition": "Sussman's propagator model — propagators working over cells of tentative beliefs, reasoning opportunistically — distills the debugging approach: spatial rather than sequential, expressive and elaboration-tolerant, and able to use any building block (CSPs, causal nets, even LLMs) as a propagator.",
+     "concept_keys": ["propagator_model", "debugging"], "claim_type": "definitional", "thinker": "Gerald Sussman", "paradigm": "society", "conditions": "flexible debugging of messy physical worlds is required", "status": "contested",
+     "provenance": [{"para": 41, "asserted_by": "Sussman (via S8 §4.2)"}]}
+  ],
+
+  "tensions": [
+    {"key": "t1", "claim_a": "c6", "claim_b": "c7", "dimension": "how to reason about the physical world: learn mappings from data to next-state predictions (Shannon bit strings) vs. construct and debug qualitative causal interpretations via propagation over a dependency network",
+     "conditions_a": "World models fit when abundant sensor/visual data exists and the goal is predicting next states (e.g. self-driving): they accept opacity and heavy compute and assume the phenomena are mostly given.",
+     "conditions_b": "The propagator model fits when a system must piece together how a messy physical system functions from the ground up: qualitative, first-principles, dependency-directed, elaboration-tolerant, spatial reasoning where the propagators can be anything that stores and processes information.",
+     "session_keys": ["s8"]}
+  ],
+
+  "probes": [
+    {"kind": "concept", "concept_keys": ["debugging", "truth_maintenance_system", "qualitative_reasoning"], "tension_key": null,
+     "prompt": "Why is reasoning about a faulty circuit board a 'debugging' process rather than a search? What does a truth-maintenance / dependency network add, and why reason qualitatively first?",
+     "expected_signals": [
+       "Frames debugging as constructing/repairing a causal interpretation from the ground up, not searching a given space.",
+       "Notes search/CSPs/causal nets assume the problem's structure is given, whereas debugging must build it.",
+       "Explains the TMS/dependency network: tentative assumptions labeled in/out, so bugs trace to a responsible assumption (provenance kept, not deleted).",
+       "Explains why qualitative reasoning comes first: mid-debugging there is no precise representation, so functioning is understood qualitatively before quantitatively."
+     ]}
+  ]
+}

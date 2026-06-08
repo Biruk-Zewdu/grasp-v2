@@ -1,0 +1,96 @@
+{
+  "session": "session_6_representation",
+  "source_title": "session_6_representation",
+  "corpus_label": "v1-draft",
+  "note": "M1 (M3 source). Core fork: deep learning / Boltzmann machine (physics: learn the constraint network) vs KRR / CSP (mathematical logic: given fundamental constraints reasoned about). Introduces constraint networks and propagation.",
+
+  "entities": [
+    {"key": "representation", "name": "representation", "type": "Representation", "abstraction": "foundational", "paradigm": "simon",
+     "definition": "A schema that exposes the natural constraints inherent in a problem, making important objects and their spatial relations explicit so that credit assignment largely goes away."},
+    {"key": "constraint", "name": "constraint", "type": "Mechanism", "abstraction": "mechanism", "paradigm": "neutral",
+     "definition": "Any restriction on the values of a variable, or on the relations among variables; a description of a stable regularity an agent can exploit to simplify a representation."},
+    {"key": "constraint_network", "name": "constraint network", "type": "Representation", "abstraction": "mechanism", "paradigm": "neutral",
+     "definition": "A graph whose nodes are variables and whose links are constraints among them; a search tree is a highly restricted special case where the only links are sequential."},
+    {"key": "principle_of_locality", "name": "principle of locality", "type": "Mechanism", "abstraction": "mechanism", "paradigm": "neutral",
+     "definition": "The finding that higher-order constraints can usually be reduced to binary ones, so an agent need only process information about local (two-variable) interdependencies — the fundamental reason representations are valuable for intelligence."},
+    {"key": "propagation", "name": "propagation", "type": "Mechanism", "abstraction": "mechanism", "paradigm": "neutral",
+     "definition": "Sending information across the links of a constraint network; information about one constraint becomes rich intermediate feedback for neighboring constraints."},
+    {"key": "constraint_satisfaction_problem", "name": "constraint satisfaction problem", "type": "Mechanism", "abstraction": "mechanism", "paradigm": "neutral",
+     "definition": "A representation-informed search (e.g. Sudoku, scheduling): interleave propagation with a search heuristic (backtracking, forward-checking) to find an assignment that satisfies a set of given constraints."},
+    {"key": "causal_net", "name": "causal net", "type": "Mechanism", "abstraction": "mechanism", "paradigm": "neutral",
+     "definition": "Pearl's Bayesian network: a directed acyclic graph whose constraints are conditional probabilities between parent and child variables; structure is given, probabilities are 'learned' by gathering information to test cause-effect beliefs."},
+    {"key": "boltzmann_machine", "name": "Boltzmann machine", "type": "Mechanism", "abstraction": "mechanism", "paradigm": "shannon",
+     "definition": "Hinton's foundational building block of deep learning: an undirected, densely-interdependent network of binary variables whose soft-constraint correlations ('weights') are learned to minimize cost, yielding a probability distribution ('representation learning')."},
+    {"key": "deep_learning", "name": "deep learning", "type": "Paradigm", "abstraction": "paradigmatic", "paradigm": "shannon",
+     "definition": "The currently-dominant AI paradigm built on Boltzmann-machine-style learning of correlations among units of Shannon information; treats intelligence as reducible to simple statistical mechanisms over homogeneous parts."},
+    {"key": "geoff_hinton", "name": "Geoff Hinton", "type": "Thinker", "abstraction": null, "paradigm": "shannon",
+     "definition": "Deep-learning leader who invented the Boltzmann machine, named for the physicist Boltzmann; holds a 'physics' view that intelligence reduces to a few statistical laws over simple parts."},
+
+    {"key": "credit_assignment", "name": "credit assignment", "type": "Problem", "abstraction": "foundational", "paradigm": "neutral"},
+    {"key": "combinatorial_explosion", "name": "combinatorial explosion", "type": "Problem", "abstraction": "foundational", "paradigm": "neutral"},
+    {"key": "search_tree", "name": "search tree", "type": "Representation", "abstraction": "mechanism", "paradigm": "neutral"},
+    {"key": "shannon_information", "name": "Shannon information", "type": "Paradigm", "abstraction": "paradigmatic", "paradigm": "shannon"},
+    {"key": "knowledge_representation_and_reasoning", "name": "knowledge representation and reasoning", "type": "Paradigm", "abstraction": "paradigmatic", "paradigm": "mccarthy_krr"},
+    {"key": "satisficing", "name": "satisficing", "type": "Mechanism", "abstraction": "mechanism", "paradigm": "simon"}
+  ],
+
+  "relations": [
+    {"from": "representation", "rel_type": "addresses", "to": "credit_assignment", "evidence": "Given the right representation, challenges of assigning credit to complex action sequences largely go away.", "para": 2},
+    {"from": "representation", "rel_type": "composed_of", "to": "constraint", "evidence": "Representations are built out of sets of constraints on problem-solving environments.", "para": 14},
+    {"from": "constraint_network", "rel_type": "composed_of", "to": "constraint", "evidence": "The links of a constraint network are constraints among variables.", "para": 28},
+    {"from": "principle_of_locality", "rel_type": "enables", "to": "propagation", "evidence": "Because most constraints reduce to binary ones, information can be propagated locally instead of combinatorially.", "para": 29},
+    {"from": "propagation", "rel_type": "addresses", "to": "combinatorial_explosion", "evidence": "Propagating information across constraints provides feedback that avoids combinatorial search.", "para": 30},
+    {"from": "constraint_satisfaction_problem", "rel_type": "specializes", "to": "representation", "evidence": "A CSP is a representation-informed search.", "para": 41},
+    {"from": "causal_net", "rel_type": "specializes", "to": "representation", "evidence": "Causal nets are a type of constraint network.", "para": 45},
+    {"from": "boltzmann_machine", "rel_type": "specializes", "to": "representation", "evidence": "Boltzmann machines are a type of constraint network.", "para": 58},
+    {"from": "constraint_satisfaction_problem", "rel_type": "composed_of", "to": "propagation", "evidence": "Forward-checking interleaves a search action with constraint propagation.", "para": 41},
+    {"from": "causal_net", "rel_type": "composed_of", "to": "propagation", "evidence": "Constraint propagation sends updated probabilities through the directed acyclic graph.", "para": 46},
+    {"from": "boltzmann_machine", "rel_type": "extends", "to": "shannon_information", "evidence": "Boltzmann variables are binary (1,0) as in Shannon information; learning is a type of compression.", "para": 58},
+    {"from": "deep_learning", "rel_type": "composed_of", "to": "boltzmann_machine", "evidence": "The essential ideas behind deep learning are captured by Hinton's Boltzmann machines.", "para": 58},
+    {"from": "boltzmann_machine", "rel_type": "proposed_by", "to": "geoff_hinton", "evidence": "Hinton invented the Boltzmann machine.", "para": 58},
+    {"from": "deep_learning", "rel_type": "proposed_by", "to": "geoff_hinton", "evidence": "The essential ideas behind deep learning are captured by Hinton's Boltzmann machines.", "para": 61},
+    {"from": "constraint_satisfaction_problem", "rel_type": "enables", "to": "knowledge_representation_and_reasoning", "evidence": "The KRR perspective in AI is the one implied by CSPs (constraints given, reasoned about).", "para": 72}
+  ],
+
+  "claims": [
+    {"key": "c1", "proposition": "A good representation exposes the natural constraints inherent in a problem, making objects and their relations explicit so the problem becomes easy to solve and credit assignment largely goes away.",
+     "concept_keys": ["representation", "credit_assignment"], "claim_type": "definitional", "thinker": null, "paradigm": "simon", "conditions": null, "status": "established",
+     "provenance": [{"para": 2, "asserted_by": "course notes (S6-representation §1)"}]},
+    {"key": "c2", "proposition": "Any complex problem can be defined as variables, domains, and constraints; by the principle of locality higher-order constraints usually reduce to binary ones, so an agent processes only local interdependencies and avoids combinatorial complexity.",
+     "concept_keys": ["constraint", "principle_of_locality", "combinatorial_explosion"], "claim_type": "definitional", "thinker": null, "paradigm": "neutral", "conditions": null, "status": "established",
+     "provenance": [{"para": 17, "asserted_by": "course notes (S6-representation §3.1)"}]},
+    {"key": "c3", "proposition": "Propagation — sending information across the links of a constraint network — turns information about one constraint into rich intermediate feedback for neighbors, which is the power of representation over searching a tree (Sudoku, crosswords).",
+     "concept_keys": ["propagation", "constraint_network"], "claim_type": "causal", "thinker": null, "paradigm": "neutral", "conditions": "the network has enough connected constraints to propagate across", "status": "established",
+     "provenance": [{"para": 30, "asserted_by": "course notes (S6-representation §3.2)"}]},
+    {"key": "c4", "proposition": "A constraint satisfaction problem is a representation-informed search: interleave propagation with a search heuristic (backtracking, forward-checking) to satisfy a set of given constraints.",
+     "concept_keys": ["constraint_satisfaction_problem", "propagation"], "claim_type": "definitional", "thinker": null, "paradigm": "neutral", "conditions": "constraints are given and the goal is usually a single solution", "status": "established",
+     "provenance": [{"para": 41, "asserted_by": "course notes (S6-representation §4.1)"}]},
+    {"key": "c5", "proposition": "In a causal net (Bayesian network) the constraints are conditional probabilities between parent and child variables in a directed acyclic graph; the structure is given but the probabilities are learned by gathering information, like a scientist testing hypotheses.",
+     "concept_keys": ["causal_net"], "claim_type": "definitional", "thinker": null, "paradigm": "neutral", "conditions": "the causal structure can be specified in advance", "status": "established",
+     "provenance": [{"para": 49, "asserted_by": "Pearl (via S6-representation §4.2)"}]},
+    {"key": "c6", "proposition": "A Boltzmann machine learns soft-constraint correlations (weights) among binary input/output variables in an undirected, densely-interdependent network, yielding a probability distribution; it is the foundational building block of deep learning and embodies a 'physics' view of intelligence as a few statistical laws over homogeneous parts.",
+     "concept_keys": ["boltzmann_machine", "deep_learning"], "claim_type": "definitional", "thinker": "Geoff Hinton", "paradigm": "shannon", "conditions": "abundant input-output data; generalization without defining the problem", "status": "contested",
+     "provenance": [{"para": 71, "asserted_by": "Hinton (via S6-representation §5.4.2)"}]},
+    {"key": "c7", "proposition": "On the knowledge-representation-and-reasoning view implied by CSPs, intelligence is satisfying some given, fundamental constraints (algebra, geometry, accounting) to construct new ones — so causal nets and Boltzmann machines are just two specialized constraints among the diversity needed for general intelligence.",
+     "concept_keys": ["knowledge_representation_and_reasoning", "constraint_satisfaction_problem"], "claim_type": "contradictory", "thinker": "John McCarthy", "paradigm": "mccarthy_krr", "conditions": "constraints are fundamental and reasoned-from, not learned", "status": "contested",
+     "provenance": [{"para": 72, "asserted_by": "course notes (S6-representation §5.4.3)"}]}
+  ],
+
+  "tensions": [
+    {"key": "t1", "claim_a": "c6", "claim_b": "c7", "dimension": "where constraints come from and what intelligence is: learned correlations among homogeneous units (the physics hypothesis) vs. given, meaningful constraints satisfied and elaborated (the knowledge-representation-and-reasoning hypothesis)",
+     "conditions_a": "The deep-learning / physics view fits when you have abundant input-output data and want generalization without defining the problem: learn a probability distribution (weights) over a directionless, densely-connected network, with no need to specify parents/children or the problem itself.",
+     "conditions_b": "The KRR view fits when constraints are fundamental and given (algebra, geometry, accounting, scheduling) and intelligence is reasoning from them: satisfy and construct constraints with precision, interpretability, and elaboration tolerance.",
+     "session_keys": ["s6r"]}
+  ],
+
+  "probes": [
+    {"kind": "concept", "concept_keys": ["constraint", "principle_of_locality", "propagation"], "tension_key": null,
+     "prompt": "What makes solving Sudoku by constraint propagation fundamentally different from cracking a safe by trying combinations? Explain constraints, the principle of locality, and propagation in your answer.",
+     "expected_signals": [
+       "Frames the safe as pure search (no informative links between guesses) and Sudoku as a constraint network with informative links.",
+       "Defines a constraint as a restriction on variable values/relations the agent can exploit.",
+       "Invokes the principle of locality: higher-order constraints reduce to binary ones, so reasoning stays local.",
+       "Explains propagation: information about one constraint becomes feedback for neighbors, avoiding combinatorial search."
+     ]}
+  ]
+}

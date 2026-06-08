@@ -1,0 +1,86 @@
+{
+  "session": "session_7_interaction",
+  "source_title": "session_7_interaction",
+  "corpus_label": "v1-draft",
+  "note": "M1 (Module 5; the product's interaction backbone). Core fork: Brooks' subsumption architecture (no world model) vs direct manipulation of symbols (symbols as resources for action). comportment / breakdown / registration ground the 'invisible means-ends guide'.",
+
+  "entities": [
+    {"key": "interaction", "name": "interaction", "type": "Paradigm", "abstraction": "paradigmatic", "paradigm": "neutral",
+     "definition": "The interactionist paradigm: intelligence is grounded in an agent's sensorimotor interaction with and experience of the physical and cultural world, not in internal symbol manipulation — 'the world is its own best model' (Brooks)."},
+    {"key": "critical_technical_practice", "name": "critical technical practice", "type": "Mechanism", "abstraction": "mechanism", "paradigm": "neutral",
+     "definition": "Agre's method: (1) surface the assumptions buried in AI's symbol-manipulation language ('wishful mnemonics'), (2) evaluate them against concrete real-world phenomena, (3) use the evaluation to build alternative AI ideas."},
+    {"key": "comportment", "name": "comportment", "type": "Mechanism", "abstraction": "mechanism", "paradigm": "neutral",
+     "definition": "Maintaining an authentic alignment between goals and the unfolding physical world through moment-to-moment coping (a form of homeostasis); when skillfully comported, most of the environment recedes to background."},
+    {"key": "breakdown", "name": "breakdown", "type": "Mechanism", "abstraction": "mechanism", "paradigm": "neutral",
+     "definition": "A moment when smooth homeostatic comportment fails (an unfamiliar door, a contradiction); the trigger at which symbolic representations become significant as resources for action."},
+    {"key": "registration", "name": "registration", "type": "Mechanism", "abstraction": "mechanism", "paradigm": "neutral",
+     "definition": "Cantwell-Smith's interplay of reckoning and judgment: checking whether schemes (representations) accurately reflect our experience of the world, and whether our experience is accurate to reality — grounding symbols beyond mere designation."},
+    {"key": "subsumption_architecture", "name": "subsumption architecture", "type": "Mechanism", "abstraction": "mechanism", "paradigm": "neutral",
+     "definition": "Brooks' design: a set of layered behaviors/goals, learned simplest-first and prioritized so higher-priority goals 'subsume' lower ones, implemented on simple circuits with no model of the world (the Roomba)."},
+    {"key": "direct_manipulation", "name": "direct manipulation", "type": "Mechanism", "abstraction": "mechanism", "paradigm": "neutral",
+     "definition": "Interacting with symbolic representations through sensorimotor action on physical devices — tinkering with graphical objects on a screen (Sketchpad, the GUI) where the computer stores constraints and the user manipulates them directly."},
+    {"key": "rodney_brooks", "name": "Rodney Brooks", "type": "Thinker", "abstraction": null, "paradigm": "neutral",
+     "definition": "MIT roboticist; proposed 'the world is its own best model', the creature hypothesis, and the subsumption architecture (the Roomba)."},
+
+    {"key": "credit_assignment", "name": "credit assignment", "type": "Problem", "abstraction": "foundational", "paradigm": "neutral"},
+    {"key": "representation", "name": "representation", "type": "Representation", "abstraction": "foundational", "paradigm": "simon"},
+    {"key": "simon_information", "name": "Simon information", "type": "Paradigm", "abstraction": "paradigmatic", "paradigm": "simon"},
+    {"key": "constraint_network", "name": "constraint network", "type": "Representation", "abstraction": "mechanism", "paradigm": "neutral"}
+  ],
+
+  "relations": [
+    {"from": "interaction", "rel_type": "addresses", "to": "credit_assignment", "evidence": "Interactionists claim credit can be assigned more efficiently by directly interacting with the world.", "para": 4},
+    {"from": "critical_technical_practice", "rel_type": "enables", "to": "interaction", "evidence": "CTP surfaces Cartesian assumptions and uses them to construct interactionist alternatives.", "para": 9},
+    {"from": "interaction", "rel_type": "composed_of", "to": "comportment", "evidence": "The goal of interaction is homeostatic comportment with situations as they unfold.", "para": 19},
+    {"from": "interaction", "rel_type": "composed_of", "to": "registration", "evidence": "Registration (reckoning and judgment) grounds symbols in experience of the world.", "para": 35},
+    {"from": "breakdown", "rel_type": "enables", "to": "representation", "evidence": "Representations become significant as resources for action at breakdowns.", "para": 28},
+    {"from": "registration", "rel_type": "extends", "to": "simon_information", "evidence": "Indexing and registration go beyond Simon's designation of symbols.", "para": 31},
+    {"from": "subsumption_architecture", "rel_type": "specializes", "to": "interaction", "evidence": "Brooks' subsumption architecture is one interactionist design.", "para": 38},
+    {"from": "direct_manipulation", "rel_type": "specializes", "to": "interaction", "evidence": "Direct manipulation is the second interactionist design.", "para": 41},
+    {"from": "subsumption_architecture", "rel_type": "contradicts", "to": "constraint_network", "evidence": "Goals are structured as layers, not as constraints that define how they relate.", "para": 39},
+    {"from": "subsumption_architecture", "rel_type": "proposed_by", "to": "rodney_brooks", "evidence": "Brooks' subsumption architecture.", "para": 38},
+    {"from": "interaction", "rel_type": "proposed_by", "to": "rodney_brooks", "evidence": "Brooks' phrase 'the world is its own best model' epitomizes the interactionist view.", "para": 4}
+  ],
+
+  "claims": [
+    {"key": "c1", "proposition": "Interactionists argue most AI ideas remain stuck in narrow Cartesianism; intelligence should be grounded in sensorimotor interaction with and experience of the physical and cultural world — 'the world is its own best model'.",
+     "concept_keys": ["interaction", "credit_assignment"], "claim_type": "contradictory", "thinker": "Rodney Brooks", "paradigm": "neutral", "conditions": null, "status": "contested",
+     "provenance": [{"para": 4, "asserted_by": "Brooks (via S7 §1)"}]},
+    {"key": "c2", "proposition": "Critical technical practice surfaces the 'wishful mnemonics' in AI's symbol-manipulation language (learning, planning, searching), evaluates them against concrete phenomena, and uses the evaluation to construct alternative systems.",
+     "concept_keys": ["critical_technical_practice"], "claim_type": "definitional", "thinker": "Phil Agre", "paradigm": "neutral", "conditions": null, "status": "established",
+     "provenance": [{"para": 9, "asserted_by": "Agre (via S7 §2.1)"}]},
+    {"key": "c3", "proposition": "By Moravec's paradox and Brooks' creature hypothesis, sensorimotor interaction is the hard, evolutionarily-old part of intelligence while language and representation came late and easily — so seemingly simple physical tasks are the truly complex ones.",
+     "concept_keys": ["interaction"], "claim_type": "causal", "thinker": "Rodney Brooks", "paradigm": "neutral", "conditions": null, "status": "contested",
+     "provenance": [{"para": 14, "asserted_by": "Brooks; Moravec (via S7 §2.2)"}]},
+    {"key": "c4", "proposition": "The goal of intelligent interaction is comportment/homeostasis — maintaining alignment with situations as they unfold — rather than optimizing or satisficing a fixed goal; such action is situated, embodied, and embedded.",
+     "concept_keys": ["comportment", "interaction"], "claim_type": "definitional", "thinker": null, "paradigm": "neutral", "conditions": null, "status": "established",
+     "provenance": [{"para": 19, "asserted_by": "course notes (S7 §3.1)"}]},
+    {"key": "c5", "proposition": "Symbolic representations are not necessary for interacting with the world; they are resources for action that become significant at breakdowns, and are grounded in experience through indexing and registration rather than mere designation.",
+     "concept_keys": ["breakdown", "representation", "registration"], "claim_type": "conditional", "thinker": "Brian Cantwell-Smith", "paradigm": "neutral", "conditions": "homeostatic comportment fails (a breakdown)", "status": "established",
+     "provenance": [{"para": 28, "asserted_by": "course notes (S7 §3.3)"}]},
+    {"key": "c6", "proposition": "Brooks' subsumption architecture designs an agent as layered behaviors learned simplest-first and prioritized so higher-priority goals subsume lower ones, on simple circuits with no model of the world — making it robust across unpredictable situations.",
+     "concept_keys": ["subsumption_architecture"], "claim_type": "definitional", "thinker": "Rodney Brooks", "paradigm": "neutral", "conditions": "robustness across changing physical situations matters more than an explicit model", "status": "established",
+     "provenance": [{"para": 38, "asserted_by": "Brooks (via S7 §4.1)"}]},
+    {"key": "c7", "proposition": "Even when we use symbolic representations we interact with them through sensorimotor actions on physical devices; direct manipulation (Sketchpad, the GUI) lets us tinker with graphical objects while the computer stores the constraints, analogous to McCarthy's declarative idea.",
+     "concept_keys": ["direct_manipulation", "representation"], "claim_type": "definitional", "thinker": null, "paradigm": "neutral", "conditions": "symbolic representations are useful but must be physically interacted with", "status": "established",
+     "provenance": [{"para": 44, "asserted_by": "course notes (S7 §4.2); Sutherland's Sketchpad"}]}
+  ],
+
+  "tensions": [
+    {"key": "t1", "claim_a": "c6", "claim_b": "c7", "dimension": "how to design an interactive system: pure sensorimotor behavior-control with no world model vs. interacting with symbolic representations as resources for action",
+     "conditions_a": "The subsumption architecture fits when robustness across unpredictable physical situations matters and a world model is a liability: layered, prioritized behaviors on simple circuits, with no representation (the Roomba, swarms of cheap Mars robots).",
+     "conditions_b": "Direct manipulation fits when symbolic representations are genuinely useful but must be physically interacted with: tinkering with graphical objects on a screen (Sketchpad, the GUI) where the computer stores the constraints and the user manipulates them directly.",
+     "session_keys": ["s7"]}
+  ],
+
+  "probes": [
+    {"kind": "concept", "concept_keys": ["comportment", "breakdown", "registration"], "tension_key": null,
+     "prompt": "Interactionists say 'the world is its own best model' and that representations are only 'resources for action'. What does that mean, and when do symbolic representations actually become important? Explain comportment, breakdowns, and registration.",
+     "expected_signals": [
+       "Explains comportment/homeostasis: maintaining moment-to-moment alignment with the world, most of it receding to background.",
+       "Identifies the breakdown as the moment smooth coping fails and a representation is summoned as a resource for action.",
+       "Explains registration as checking schemes against experience and experience against reality (reckoning and judgment).",
+       "Notes representations are secondary, not rejected — they matter at breakdowns, not as a constant internal model."
+     ]}
+  ]
+}

@@ -1,0 +1,25 @@
+[project]
+name = "grasp-build"
+version = "0.0.0"
+description = "Grasp — build-side: typed record schemas, validation, and corpus normalization"
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.7",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "ruff>=0.6",
+    "psycopg[binary]>=3.2",   # used by the loader (M1) once the DB is up
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
