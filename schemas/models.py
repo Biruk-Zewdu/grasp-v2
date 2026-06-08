@@ -28,6 +28,12 @@ class CorpusVersion(BaseModel):
     label: str
     frozen_at: str | None = None
     notes: str | None = None
+    # v2 (upload): an upload is a version.
+    origin: str = "uploaded"           # 'example' | 'uploaded'
+    owner: str | None = None
+    status: str = "ready"              # 'building' | 'ready' | 'failed'
+    source_name: str | None = None
+    built_at: str | None = None
 
 
 class Source(BaseModel):
@@ -85,7 +91,8 @@ class Claim(BaseModel):
     concept_ids: list[int] = Field(default_factory=list)
     claim_type: ClaimType
     thinker: str | None = None
-    paradigm: Paradigm
+    paradigm: Paradigm | None = None        # v2: optional (enum kept for example corpus)
+    paradigm_label: str | None = None       # v2: free-text paradigm for arbitrary docs
     conditions: str | None = None
     status: ClaimStatus = ClaimStatus.default
     source_id: int | None = None
@@ -116,10 +123,17 @@ class Tension(BaseModel):
     conditions_b: str
     session_ids: list[int] = Field(default_factory=list)
     corpus_version: int
+    # v2: free-text side labels so a detected fork in any doc can name both sides.
+    paradigm_label_a: str | None = None
+    paradigm_label_b: str | None = None
+    thinker_a: str | None = None
+    thinker_b: str | None = None
 
     @model_validator(mode="after")
     def _two_sided(self) -> "Tension":
-        # I3: a tension is two-sided — both conditions non-empty.
+        # I3: a tension is two-sided — both conditions non-empty. (Tensions remain
+        # two-sided when present; in v2 they are OPTIONAL — 0..n per artifact —
+        # detected, never required. The two-sided rule only applies once one exists.)
         if not self.conditions_a.strip() or not self.conditions_b.strip():
             raise ValueError("tension must have both conditions_a and conditions_b (I3)")
         return self
@@ -128,7 +142,8 @@ class Tension(BaseModel):
 class Viewpoint(BaseModel):
     id: int | None = None
     claim_id: int
-    paradigm: Paradigm
+    paradigm: Paradigm | None = None        # v2: optional
+    paradigm_label: str | None = None       # v2: free-text
     thinker: str | None = None
     conditions: str | None = None
     superseded_by: int | None = None
@@ -155,3 +170,53 @@ class Probe(BaseModel):
         if self.kind == ProbeKind.concept and not self.concept_ids:
             raise ValueError("concept-probe requires concept_ids")
         return self
+
+
+# ─────────────────────────── v2 (upload) models ───────────────────────────
+
+
+class Subtopic(BaseModel):
+    """A unit of the decomposition — a rung of the lesson rail."""
+    id: int | None = None
+    title: str
+    summary: str | None = None
+    concept_ids: list[int] = Field(default_factory=list)
+    ordinal: int = 0
+    corpus_version: int
+
+
+class Lesson(BaseModel):
+    """Generated teaching material for a subtopic. Prose is model-composed; a
+    referenced tension is rendered verbatim at serve time, never authored here."""
+    id: int | None = None
+    subtopic_id: int
+    headline: str | None = None
+    body: str
+    key_term_ids: list[int] = Field(default_factory=list)
+    tension_id: int | None = None
+    source_concept_ids: list[int] = Field(default_factory=list)
+    corpus_version: int
+
+
+class AssessmentQuestion(BaseModel):
+    id: int | None = None
+    ordinal: int = 0
+    stem: str
+    options: list[str] = Field(min_length=2)
+    answer_index: int
+    claim_id: int | None = None
+    subtopic_id: int | None = None
+    rationale: str | None = None
+
+    @model_validator(mode="after")
+    def _answer_in_range(self) -> "AssessmentQuestion":
+        if not (0 <= self.answer_index < len(self.options)):
+            raise ValueError("answer_index out of range for options")
+        return self
+
+
+class Assessment(BaseModel):
+    """One doc-level question set, used for both pre and post."""
+    id: int | None = None
+    corpus_version: int
+    questions: list[AssessmentQuestion] = Field(default_factory=list)

@@ -159,6 +159,7 @@ export async function getTension(id: number): Promise<TensionRecord | null> {
       id: claim.id,
       proposition: claim.proposition,
       paradigm: claim.paradigm,
+      paradigmLabel: claim.paradigmLabel,
       thinker: claim.thinker,
     })
     .from(claim)
@@ -166,13 +167,28 @@ export async function getTension(id: number): Promise<TensionRecord | null> {
   const byId = new Map(claims.map((c) => [c.id, c]));
   const a = byId.get(t.claimA)!;
   const b = byId.get(t.claimB)!;
+  // v2: a detected tension may name its own sides (free-text), else fall back to
+  // the claim's enum paradigm or its free-text label. Always resolves to a string.
+  const label = (
+    side: string | null,
+    cParadigm: string | null,
+    cLabel: string | null,
+  ): string => side ?? cParadigm ?? cLabel ?? "";
   return {
     id: t.id,
     dimension: t.dimension,
     conditionsA: t.conditionsA,
     conditionsB: t.conditionsB,
-    claimA: { proposition: a.proposition, paradigm: a.paradigm, thinker: a.thinker },
-    claimB: { proposition: b.proposition, paradigm: b.paradigm, thinker: b.thinker },
+    claimA: {
+      proposition: a.proposition,
+      paradigm: label(t.paradigmLabelA, a.paradigm, a.paradigmLabel),
+      thinker: t.thinkerA ?? a.thinker,
+    },
+    claimB: {
+      proposition: b.proposition,
+      paradigm: label(t.paradigmLabelB, b.paradigm, b.paradigmLabel),
+      thinker: t.thinkerB ?? b.thinker,
+    },
   };
 }
 

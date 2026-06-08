@@ -10,6 +10,10 @@ export const paradigm = pgEnum("paradigm", ['reinforcement', 'society', 'shannon
 export const probeKind = pgEnum("probe_kind", ['concept', 'tension'])
 export const relationType = pgEnum("relation_type", ['generalizes', 'specializes', 'causes', 'enables', 'contradicts', 'composed_of', 'proposed_by', 'exemplified_by', 'addresses', 'extends'])
 export const sourceKind = pgEnum("source_kind", ['session', 'paper'])
+// v2 (upload) enums
+export const corpusOrigin = pgEnum("corpus_origin", ['example', 'uploaded'])
+export const buildStatus = pgEnum("build_status", ['building', 'ready', 'failed'])
+export const assessPhase = pgEnum("assess_phase", ['pre', 'post'])
 
 
 export const corpusVersion = pgTable("corpus_version", {
@@ -17,8 +21,15 @@ export const corpusVersion = pgTable("corpus_version", {
 	label: text().notNull(),
 	frozenAt: timestamp("frozen_at", { withTimezone: true, mode: 'string' }),
 	notes: text(),
+	// v2 (upload): an upload is a version
+	origin: corpusOrigin().default('uploaded').notNull(),
+	owner: text(),
+	status: buildStatus().default('ready').notNull(),
+	sourceName: text("source_name"),
+	builtAt: timestamp("built_at", { withTimezone: true, mode: 'string' }),
 }, (table) => [
 	unique("corpus_version_label_key").on(table.label),
+	index("corpus_version_owner_idx").on(table.owner),
 ]);
 
 export const source = pgTable("source", {
@@ -107,7 +118,8 @@ export const claim = pgTable("claim", {
 	conceptIds: integer("concept_ids").array().default([]).notNull(),
 	claimType: claimType("claim_type").notNull(),
 	thinker: text(),
-	paradigm: paradigm().notNull(),
+	paradigm: paradigm(),                       // v2: now optional (enum kept for example corpus)
+	paradigmLabel: text("paradigm_label"),      // v2: free-text paradigm for arbitrary docs
 	conditions: text(),
 	status: claimStatus().default('default').notNull(),
 	sourceId: integer("source_id"),
@@ -180,6 +192,11 @@ export const tension = pgTable("tension", {
 	conditionsB: text("conditions_b").notNull(),
 	sessionIds: integer("session_ids").array().default([]).notNull(),
 	corpusVersion: integer("corpus_version").notNull(),
+	// v2: free-text side labels so a detected fork in any doc can name both sides
+	paradigmLabelA: text("paradigm_label_a"),
+	paradigmLabelB: text("paradigm_label_b"),
+	thinkerA: text("thinker_a"),
+	thinkerB: text("thinker_b"),
 }, (table) => [
 	foreignKey({
 			columns: [table.claimA],
@@ -202,7 +219,8 @@ export const tension = pgTable("tension", {
 export const viewpoint = pgTable("viewpoint", {
 	id: integer().primaryKey().generatedAlwaysAsIdentity({ name: "viewpoint_id_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 2147483647, cache: 1 }),
 	claimId: integer("claim_id").notNull(),
-	paradigm: paradigm().notNull(),
+	paradigm: paradigm(),                       // v2: now optional
+	paradigmLabel: text("paradigm_label"),      // v2: free-text
 	thinker: text(),
 	conditions: text(),
 	supersededBy: integer("superseded_by"),
@@ -307,4 +325,77 @@ export const usageCounter = pgTable("usage_counter", {
 	count: integer().default(0).notNull(),
 }, (table) => [
 	primaryKey({ columns: [table.userId, table.bucket, table.windowStart], name: "usage_counter_pkey"}),
+]);
+
+// ─────────────────────────── v2 (upload) tables ───────────────────────────
+
+// The decomposition — the lesson rail (Simon near-decomposability).
+export const subtopic = pgTable("subtopic", {
+	id: integer().primaryKey().generatedAlwaysAsIdentity({ name: "subtopic_id_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 2147483647, cache: 1 }),
+	title: text().notNull(),
+	summary: text(),
+	conceptIds: integer("concept_ids").array().default([]).notNull(),
+	ordinal: integer().default(0).notNull(),
+	corpusVersion: integer("corpus_version").notNull(),
+}, (table) => [
+	foreignKey({ columns: [table.corpusVersion], foreignColumns: [corpusVersion.id], name: "subtopic_corpus_version_fkey" }),
+	index("subtopic_corpus_version_idx").on(table.corpusVersion),
+]);
+
+// Generated teaching material per subtopic (cached). Prose is model-composed; a
+// referenced tension is rendered VERBATIM at serve time, never authored here.
+export const lesson = pgTable("lesson", {
+	id: integer().primaryKey().generatedAlwaysAsIdentity({ name: "lesson_id_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 2147483647, cache: 1 }),
+	subtopicId: integer("subtopic_id").notNull(),
+	headline: text(),
+	body: text().notNull(),
+	keyTermIds: integer("key_term_ids").array().default([]).notNull(),
+	tensionId: integer("tension_id"),
+	sourceConceptIds: integer("source_concept_ids").array().default([]).notNull(),
+	corpusVersion: integer("corpus_version").notNull(),
+}, (table) => [
+	foreignKey({ columns: [table.subtopicId], foreignColumns: [subtopic.id], name: "lesson_subtopic_id_fkey" }),
+	foreignKey({ columns: [table.tensionId], foreignColumns: [tension.id], name: "lesson_tension_id_fkey" }),
+	foreignKey({ columns: [table.corpusVersion], foreignColumns: [corpusVersion.id], name: "lesson_corpus_version_fkey" }),
+	index("lesson_subtopic_idx").on(table.subtopicId),
+	index("lesson_corpus_version_idx").on(table.corpusVersion),
+]);
+
+// ONE doc-level assessment set, used for both pre and post.
+export const assessment = pgTable("assessment", {
+	id: integer().primaryKey().generatedAlwaysAsIdentity({ name: "assessment_id_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 2147483647, cache: 1 }),
+	corpusVersion: integer("corpus_version").notNull(),
+}, (table) => [
+	foreignKey({ columns: [table.corpusVersion], foreignColumns: [corpusVersion.id], name: "assessment_corpus_version_fkey" }),
+	unique("assessment_corpus_version_key").on(table.corpusVersion),
+]);
+
+export const assessmentQuestion = pgTable("assessment_question", {
+	id: integer().primaryKey().generatedAlwaysAsIdentity({ name: "assessment_question_id_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 2147483647, cache: 1 }),
+	assessmentId: integer("assessment_id").notNull(),
+	ordinal: integer().default(0).notNull(),
+	stem: text().notNull(),
+	options: text().array().notNull(),
+	answerIndex: integer("answer_index").notNull(),
+	claimId: integer("claim_id"),
+	subtopicId: integer("subtopic_id"),
+	rationale: text(),
+}, (table) => [
+	foreignKey({ columns: [table.assessmentId], foreignColumns: [assessment.id], name: "assessment_question_assessment_id_fkey" }),
+	foreignKey({ columns: [table.claimId], foreignColumns: [claim.id], name: "assessment_question_claim_id_fkey" }),
+	foreignKey({ columns: [table.subtopicId], foreignColumns: [subtopic.id], name: "assessment_question_subtopic_id_fkey" }),
+	index("assessment_question_assessment_idx").on(table.assessmentId),
+]);
+
+export const assessmentResponse = pgTable("assessment_response", {
+	id: integer().primaryKey().generatedAlwaysAsIdentity({ name: "assessment_response_id_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 2147483647, cache: 1 }),
+	userId: text("user_id").notNull(),
+	questionId: integer("question_id").notNull(),
+	phase: assessPhase().notNull(),
+	chosenIndex: integer("chosen_index").notNull(),
+	correct: boolean().notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	foreignKey({ columns: [table.questionId], foreignColumns: [assessmentQuestion.id], name: "assessment_response_question_id_fkey" }),
+	index("assessment_response_user_phase_idx").on(table.userId, table.phase),
 ]);
