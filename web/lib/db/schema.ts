@@ -426,3 +426,13 @@ export const usageCounter = pgTable("usage_counter", {
 }, (table) => [
 	primaryKey({ columns: [table.userId, table.bucket, table.windowStart], name: "usage_counter_pkey"}),
 ]);
+
+export const studySheet = pgTable("study_sheet", {
+	id: integer().primaryKey().generatedAlwaysAsIdentity({ name: "study_sheet_id_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 2147483647, cache: 1 }),
+	corpusVersion: integer("corpus_version").notNull(),
+	data: text().notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	foreignKey({ columns: [table.corpusVersion], foreignColumns: [corpusVersion.id], name: "study_sheet_corpus_version_fkey" }),
+	unique("study_sheet_corpus_version_key").on(table.corpusVersion),
+]);
