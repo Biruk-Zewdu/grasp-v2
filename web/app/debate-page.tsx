@@ -10,12 +10,13 @@ import type { DebateSetup, DebateSide, DebateTurn } from "@/lib/debate";
 // are grounded in the artifact; nobody wins — the point is when each side holds.
 
 type Mode = null | { kind: "watch" } | { kind: "play"; mine: DebateSide };
+type UITurn = DebateTurn & { groundedIn?: string[] };
 
 export default function DebatePage({ versionId, tensionId }: { versionId: number; tensionId: number }) {
   const [sessionId] = useState(() => globalThis.crypto?.randomUUID?.() ?? String(Math.random()));
   const [setup, setSetup] = useState<DebateSetup | null | "loading">("loading");
   const [mode, setMode] = useState<Mode>(null);
-  const [turns, setTurns] = useState<DebateTurn[]>([]);
+  const [turns, setTurns] = useState<UITurn[]>([]);
   const [input, setInput] = useState("");
   const [busy, start] = useTransition();
   const endRef = useRef<HTMLDivElement>(null);
@@ -28,10 +29,11 @@ export default function DebatePage({ versionId, tensionId }: { versionId: number
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [turns.length, busy]);
 
-  function aiMove(side: DebateSide, studentPoint: string | null, hist: DebateTurn[]) {
+  function aiMove(side: DebateSide, studentPoint: string | null, hist: UITurn[]) {
+    const plain: DebateTurn[] = hist.map((h) => ({ side: h.side, text: h.text }));
     start(async () => {
-      const text = await debateMove(sessionId, tensionId, side, hist, studentPoint);
-      if (text) setTurns((t) => [...t, { side, text }]);
+      const move = await debateMove(sessionId, tensionId, side, plain, studentPoint);
+      if (move) setTurns((t) => [...t, { side, text: move.argument, groundedIn: move.groundedIn }]);
     });
   }
   function advanceWatch() {
@@ -118,6 +120,22 @@ export default function DebatePage({ versionId, tensionId }: { versionId: number
                         {label}{isMine ? " · you" : ""}
                       </div>
                       {t.text}
+                      {!isMine && t.groundedIn && t.groundedIn.length > 0 && (
+                        <div className="mt-2 flex flex-wrap items-center gap-1">
+                          <span className={"text-[10px] " + (t.side === "A" ? "text-neutral-400" : "text-neutral-500")}>grounded in:</span>
+                          {t.groundedIn.map((g, k) => (
+                            <span
+                              key={k}
+                              className={
+                                "rounded px-1.5 py-0.5 text-[10px] " +
+                                (t.side === "A" ? "bg-neutral-100 text-neutral-600" : "bg-white/15 text-neutral-200")
+                              }
+                            >
+                              {g}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 );

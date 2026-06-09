@@ -96,7 +96,7 @@ export default function Dashboard({ data }: { data: DashboardData }) {
         {/* Tools */}
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Tile title="First principles" detail="Learn it, section by section" icon="📖" onClick={() => go("/understand")} />
-          <Tile title="Study sheet" detail="Exam-ready, at a glance" icon="📝" onClick={() => go("/sheet")} />
+          <Tile title="Study sheet" detail="Personal — built as you learn" icon="📝" onClick={() => go("/sheet")} />
           <Tile title="Quiz" detail={data.hasAssessment ? "Test yourself" : "Not available"} icon="✓" disabled={!data.hasAssessment} onClick={() => go("/quiz")} />
           <Tile title="Flashcards" detail="Drill the key terms" icon="🗂" onClick={() => go("/flashcards")} />
         </div>

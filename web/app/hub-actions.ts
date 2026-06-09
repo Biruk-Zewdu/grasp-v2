@@ -2,7 +2,7 @@
 
 import { getFlashcards, getTension, getConceptBriefs } from "@/lib/db/records";
 import { renderTension, type TensionTable } from "@/lib/render";
-import { getDebateSetup, argueSide, type DebateSide, type DebateTurn, type DebateSetup } from "@/lib/debate";
+import { getDebateSetup, argueSide, type DebateSide, type DebateTurn, type DebateSetup, type DebateMove } from "@/lib/debate";
 import { getOrBuildSummary } from "@/lib/summary";
 import { getUserId } from "@/lib/server/identity";
 
@@ -44,7 +44,7 @@ export async function debateMove(
   side: DebateSide,
   history: DebateTurn[],
   studentPoint: string | null,
-): Promise<string | null> {
+): Promise<DebateMove | null> {
   const userId = await getUserId(sessionId);
   return argueSide(tensionId, side, history, studentPoint, userId);
 }

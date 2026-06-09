@@ -52,14 +52,29 @@ const SYSTEM =
   "most likely to be tested. Each one sentence.\n" +
   "4. Ground everything in the artifact. Never invent facts.";
 
-/** Fetch the cached sheet, or compose + cache it. The concept DEFINITIONS are
- *  always the artifact's verbatim text — the model only ranks + writes why-lines. */
-export async function getOrBuildSheet(versionId: number, sessionId: string): Promise<StudySheetData | null> {
-  const cached = await db
-    .select({ data: studySheet.data })
-    .from(studySheet)
-    .where(eq(studySheet.corpusVersion, versionId))
-    .limit(1);
+const PERSONAL_NOTE =
+  "\n\nThis sheet is PERSONALISED for one student, using their study journey below. Weight it to " +
+  "what THEY need: rank the concepts they got wrong on the pre-quiz or never explored HIGHER, and " +
+  "let the tldr/keyPoints speak to their gaps. Still ground everything in the artifact.";
+
+/** Fetch the cached generic sheet, or compose + cache it. When a `journeyNote` is
+ *  given (the learner's pre-quiz misses, questions, operators, sections read), the
+ *  sheet is PERSONALISED to their gaps and NOT cached (it's per-learner). The
+ *  concept DEFINITIONS are always the artifact's verbatim text — the model only
+ *  ranks + writes why-lines. */
+export async function getOrBuildSheet(
+  versionId: number,
+  sessionId: string,
+  journeyNote?: string,
+): Promise<StudySheetData | null> {
+  const personal = !!journeyNote && journeyNote.trim().length > 0;
+  const cached = personal
+    ? []
+    : await db
+        .select({ data: studySheet.data })
+        .from(studySheet)
+        .where(eq(studySheet.corpusVersion, versionId))
+        .limit(1);
   if (cached[0]?.data) {
     try {
       return JSON.parse(cached[0].data) as StudySheetData;
@@ -84,8 +99,10 @@ export async function getOrBuildSheet(versionId: number, sessionId: string): Pro
     sessionId,
     role: "reason",
     cacheSystem: true,
-    system: `${SYSTEM}\n\n=== ARTIFACT ===\n${artifact}`,
-    user: "Build the exam-prep study sheet for this document.",
+    system: `${SYSTEM}${personal ? PERSONAL_NOTE : ""}\n\n=== ARTIFACT ===\n${artifact}`,
+    user: personal
+      ? `Build a study sheet personalised to this student.\n\n=== THEIR JOURNEY ===\n${journeyNote}`
+      : "Build the exam-prep study sheet for this document.",
     schemaName: "sheet",
     schema: SCHEMA as unknown as Record<string, unknown>,
     maxTokens: 1200,
@@ -113,13 +130,16 @@ export async function getOrBuildSheet(versionId: number, sessionId: string): Pro
     tensionId,
   };
 
-  try {
-    await db
-      .insert(studySheet)
-      .values({ corpusVersion: versionId, data: JSON.stringify(data) })
-      .onConflictDoUpdate({ target: studySheet.corpusVersion, set: { data: JSON.stringify(data) } });
-  } catch {
-    /* cache best-effort */
+  // Only cache the GENERIC sheet — a personalised one is per-learner, not shared.
+  if (!personal) {
+    try {
+      await db
+        .insert(studySheet)
+        .values({ corpusVersion: versionId, data: JSON.stringify(data) })
+        .onConflictDoUpdate({ target: studySheet.corpusVersion, set: { data: JSON.stringify(data) } });
+    } catch {
+      /* cache best-effort */
+    }
   }
   return data;
 }

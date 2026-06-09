@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { quiz, grade, delta } from "./assess-actions";
+import { recordPreQuiz } from "./journey";
 
 // The doc-level pre/post check (Phase G). One question set, taken before learning
 // (baseline) and after (gain); the payoff is the before→after delta — credit
@@ -43,6 +44,13 @@ export default function Assessment({
     setResult(g);
     setDeltaInfo(await delta(sessionId, versionId));
     setBusy(false);
+    // Feed the journey: on the pre-quiz, remember which questions they missed so
+    // the personalized study sheet can focus there.
+    if (phase === "pre" && questions) {
+      const byId = new Map(questions.map((q) => [q.id, q]));
+      const misses = g.perQuestion.filter((r) => !r.correct).map((r) => byId.get(r.id)?.stem ?? "").filter(Boolean);
+      recordPreQuiz(versionId, misses, g.correct, g.total);
+    }
   }
 
   return (

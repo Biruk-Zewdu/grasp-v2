@@ -38,20 +38,27 @@ export async function getDebateSetup(tensionId: number): Promise<DebateSetup | n
 
 const SCHEMA = {
   type: "object",
-  properties: { argument: { type: "string" } },
-  required: ["argument"],
+  properties: {
+    argument: { type: "string" },
+    groundedIn: { type: "array", items: { type: "string" } },
+  },
+  required: ["argument", "groundedIn"],
   additionalProperties: false,
 } as const;
 
+export type DebateMove = { argument: string; groundedIn: string[] };
+
 /** Produce one grounded argument for `side`, given the debate so far. If the last
- *  move was the opponent's (or the student's), this is a rebuttal. */
+ *  move was the opponent's (or the student's), this is a rebuttal. Returns the
+ *  argument plus the artifact concepts/claims it leaned on (so grounding is visible,
+ *  not just instructed). */
 export async function argueSide(
   tensionId: number,
   side: DebateSide,
   history: DebateTurn[],
   studentPoint: string | null,
   sessionId: string,
-): Promise<string | null> {
+): Promise<DebateMove | null> {
   const setup = await getDebateSetup(tensionId);
   if (!setup) return null;
   const versionId = await tensionVersion(tensionId);
@@ -68,9 +75,12 @@ export async function argueSide(
     `1. Argue for YOUR side and rebut the other — but stay grounded: use only the artifact's ` +
     `concepts, claims, and the recorded conditions. Never invent facts, studies, or numbers.\n` +
     `2. Be sharp and concrete (2–4 sentences), like a real debater making one point or rebuttal. ` +
-    `Reference WHEN your side holds (its conditions) when it strengthens the point.\n` +
+    `NAME at least one specific artifact concept or claim you rely on, and reference WHEN your ` +
+    `side holds (its conditions) when it strengthens the point.\n` +
     `3. Do NOT concede the debate or declare a winner — the tension stays open. Argue your side ` +
-    `honestly within its recorded position; do not invent a new position.\n\n` +
+    `honestly within its recorded position; do not invent a new position.\n` +
+    `4. groundedIn: list the exact names of the artifact concepts/claims your argument leaned on ` +
+    `(1–3). These must be things actually in the artifact below.\n\n` +
     `=== ARTIFACT ===\n${artifact}`;
 
   const user =
@@ -80,7 +90,7 @@ export async function argueSide(
     (transcript ? `DEBATE SO FAR:\n${transcript}\n\n` : "") +
     (studentPoint ? `The other debater (a student) just argued:\n"${studentPoint}"\n\nRebut it for your side.` : history.length ? `Make your next point / rebuttal for your side.` : `Open the debate with your strongest point for your side.`);
 
-  const res = await structuredCall<{ argument: string }>({
+  const res = await structuredCall<{ argument: string; groundedIn: string[] }>({
     sessionId,
     role: "reason",
     cacheSystem: true,
@@ -88,7 +98,8 @@ export async function argueSide(
     user,
     schemaName: "debate",
     schema: SCHEMA as unknown as Record<string, unknown>,
-    maxTokens: 350,
+    maxTokens: 400,
   });
-  return res.ok ? res.data.argument.trim() : null;
+  if (!res.ok) return null;
+  return { argument: res.data.argument.trim(), groundedIn: (res.data.groundedIn ?? []).slice(0, 3) };
 }

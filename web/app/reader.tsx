@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { readLesson, ask, lessonSources, type LessonView, type AskAnswer } from "./learn-actions";
+import { readLesson, ask, lessonSources, runOperator, type LessonView, type AskAnswer } from "./learn-actions";
 import { Logo } from "./logo";
 import { Prose, TensionBlock, SourceBlock } from "./lesson-parts";
-import type { Catalog } from "@/lib/guide/types";
+import { operatorsForSection, type OperatorKey, type OperatorResult } from "@/lib/operators/catalog";
+import { recordSection, recordQuestion, recordOperator } from "./journey";
 
 // The revamped "Understand" surface: a lesson READER, not an empty chat box. The
 // learner lands on a real, rendered lesson for the first subtopic; the left rail
@@ -36,7 +37,11 @@ export default function Reader({
   const [input, setInput] = useState("");
   const [asking, startAsk] = useTransition();
   const [src, setSrc] = useState<string[] | null>(null);
+  const [opResult, setOpResult] = useState<{ op: OperatorKey; result: OperatorResult } | null>(null);
+  const [opBusy, setOpBusy] = useState<OperatorKey | null>(null);
   const topRef = useRef<HTMLDivElement>(null);
+
+  const activeSub = subtopics.find((s) => s.id === activeId);
 
   // Load (or compose) the lesson whenever the active section changes.
   useEffect(() => {
@@ -44,26 +49,43 @@ export default function Reader({
     setLesson(null);
     setFollows([]);
     setSrc(null);
+    setOpResult(null);
     startLoad(async () => {
       const l = await readLesson(sessionId, activeId);
       setLesson(l);
       topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
+    // record the section in the journey (for the personalized study sheet)
+    const title = subtopics.find((s) => s.id === activeId)?.title;
+    if (title) recordSection(versionId, title);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId]);
-
-  const activeSub = subtopics.find((s) => s.id === activeId);
 
   function send() {
     const q = input.trim();
     if (!q || asking) return;
     setInput("");
+    recordQuestion(versionId, q);
     const ctx = lessonContext();
     setFollows((f) => [...f, { q, a: null }]);
     startAsk(async () => {
       const a = await ask(sessionId, q, ctx, versionId);
       setFollows((f) => f.map((x, i) => (i === f.length - 1 ? { ...x, a } : x)));
     });
+  }
+
+  function applyOp(op: OperatorKey) {
+    if (activeId == null || opBusy) return;
+    setOpBusy(op);
+    setOpResult(null);
+    (async () => {
+      const result = await runOperator(sessionId, activeId, op);
+      setOpBusy(null);
+      if (result) {
+        setOpResult({ op, result });
+        recordOperator(versionId, op, activeSub?.title ?? "", result.title);
+      }
+    })();
   }
 
   function lessonContext(): string {
@@ -175,6 +197,38 @@ export default function Reader({
                     Show the source
                   </button>
                 )}
+
+                {/* Operators — the course's reasoning moves, applied to THIS section */}
+                <div className="rounded-2xl border border-neutral-200 bg-neutral-50/60 p-4">
+                  <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Work with this idea</p>
+                  <p className="mt-0.5 text-xs text-neutral-400">Apply a reasoning move to this section — the way the course says you understand.</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {operatorsForSection().slice(0, 4).map((op) => (
+                      <button
+                        key={op.key}
+                        onClick={() => applyOp(op.key)}
+                        disabled={opBusy != null}
+                        className={
+                          "rounded-xl border px-3 py-1.5 text-left text-xs transition-colors disabled:opacity-50 " +
+                          (opResult?.op === op.key
+                            ? "border-neutral-900 bg-neutral-900 text-white"
+                            : "border-neutral-300 bg-white text-neutral-700 hover:border-neutral-400 hover:bg-neutral-50")
+                        }
+                      >
+                        <span className="font-medium">{opBusy === op.key ? "…" : op.label}</span>
+                        <span className={"ml-1 " + (opResult?.op === op.key ? "text-neutral-400" : "text-neutral-400")}>· {op.blurb}</span>
+                      </button>
+                    ))}
+                  </div>
+                  {opResult && (
+                    <div className="mt-3 animate-[fadeIn_.3s_ease] rounded-xl border border-neutral-200 bg-white p-3.5">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">{opResult.result.title}</p>
+                      <div className="mt-1.5">
+                        <Prose text={opResult.result.body} glossary={lesson.glossary} onExplore={(t) => setInput(`Tell me more about ${t}.`)} />
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 {/* follow-ups stack here, in context */}
                 {follows.length > 0 && (

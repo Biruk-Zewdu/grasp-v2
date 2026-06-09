@@ -1,6 +1,7 @@
 "use server";
 
 import { getOrBuildLesson } from "@/lib/lesson";
+import { applyOperator, type OperatorKey, type OperatorResult } from "@/lib/operators";
 import { runTurn } from "@/lib/agent";
 import {
   resolveVersion,
@@ -112,4 +113,14 @@ export async function lessonSources(conceptIds: number[]): Promise<string[]> {
   } catch {
     return [];
   }
+}
+
+/** Apply a course operator to a section — the reasoning move run on real content. */
+export async function runOperator(
+  sessionId: string,
+  subtopicId: number,
+  op: OperatorKey,
+): Promise<OperatorResult | null> {
+  const userId = await getUserId(sessionId);
+  return applyOperator(subtopicId, op, userId);
 }
