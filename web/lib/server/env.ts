@@ -20,7 +20,7 @@ export const SERVE_CORPUS_VERSION = process.env.SERVE_CORPUS_VERSION ?? "v1";
 // The model is a swappable instrument (the project's thesis). Pick the provider
 // with one env var; default OpenAI.
 export const MODEL_PROVIDER: ProviderName =
-  process.env.MODEL_PROVIDER === "anthropic" ? "anthropic" : "openai";
+  process.env.MODEL_PROVIDER === "openai" ? "openai" : "anthropic";
 
 // Per-provider model ids by role (small render/probe, mid classify). All
 // env-overridable — bump these as providers ship new models.

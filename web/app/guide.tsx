@@ -17,10 +17,18 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { turn, basics, expandSources } from "./actions";
+import { turn, basics, expandSources, consensusTurn } from "./actions";
 import { Logo } from "./logo";
-import type { AnswerCard, Catalog, GlossTerm } from "@/lib/guide/types";
+import type { AnswerCard, Catalog, GlossTerm, UserCriteria } from "@/lib/guide/types";
 import type { TensionTable } from "@/lib/render";
+
+type CriteriaPreset = "balanced" | "simple" | "detailed" | "concise";
+const PRESETS: Record<CriteriaPreset, { label: string; criteria: UserCriteria }> = {
+  balanced: { label: "Balanced",  criteria: { simplicity: 3, depth: 3, conciseness: 3 } },
+  simple:   { label: "Simple",    criteria: { simplicity: 5, depth: 2, conciseness: 3 } },
+  detailed: { label: "Detailed",  criteria: { simplicity: 2, depth: 5, conciseness: 2 } },
+  concise:  { label: "Concise",   criteria: { simplicity: 3, depth: 2, conciseness: 5 } },
+};
 
 // Agentic moves the learner can trigger on the current answer — each is a
 // templated follow-up the agent answers with full conversation context. These are
@@ -57,6 +65,8 @@ export default function Guide({ catalog }: { catalog: Catalog }) {
   // Revealed source passages, keyed by "groupIndex-stepId" (stable across reorder).
   const [sources, setSources] = useState<Record<string, string[]>>({});
   const [input, setInput] = useState("");
+  const [consensusEnabled, setConsensusEnabled] = useState(false);
+  const [preset, setPreset] = useState<CriteriaPreset>("balanced");
   const [pending, start] = useTransition();
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -116,9 +126,13 @@ export default function Guide({ catalog }: { catalog: Catalog }) {
     const h = history();
     if (!continued) setInput("");
     const add = continued && thread.length ? pushStep : pushGroup;
+    const criteria = PRESETS[preset].criteria;
     start(async () => {
       try {
-        add(await turn(sessionId, q, h));
+        const card = consensusEnabled
+          ? await consensusTurn(sessionId, q, h, criteria)
+          : await turn(sessionId, q, h);
+        add(card);
       } catch {
         add(fallbackCard(q, "That didn't reach the server. Check your connection and try again."));
       }
@@ -273,8 +287,52 @@ export default function Guide({ catalog }: { catalog: Catalog }) {
               ))
             )}
           </div>
+          <div className="mt-4 space-y-2 border-t border-neutral-100 pt-3">
+            <div className="flex items-center justify-between">
+              <Label>Consensus mode</Label>
+              <button
+                onClick={() => setConsensusEnabled((v) => !v)}
+                className={
+                  "relative h-5 w-9 rounded-full transition-colors " +
+                  (consensusEnabled ? "bg-neutral-900" : "bg-neutral-200")
+                }
+                aria-pressed={consensusEnabled}
+                aria-label="Toggle consensus mode"
+              >
+                <span
+                  className={
+                    "absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform " +
+                    (consensusEnabled ? "translate-x-4" : "translate-x-0.5")
+                  }
+                />
+              </button>
+            </div>
+            {consensusEnabled && (
+              <div className="space-y-1">
+                <p className="text-[10px] text-neutral-400">
+                  3 models debate; a judge picks the best answer for your priority.
+                </p>
+                <div className="flex flex-wrap gap-1">
+                  {(Object.keys(PRESETS) as CriteriaPreset[]).map((k) => (
+                    <button
+                      key={k}
+                      onClick={() => setPreset(k)}
+                      className={
+                        "rounded-full px-2.5 py-1 text-[11px] transition-colors " +
+                        (preset === k
+                          ? "bg-neutral-900 text-white"
+                          : "border border-neutral-200 text-neutral-600 hover:bg-neutral-50")
+                      }
+                    >
+                      {PRESETS[k].label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
           <form
-            className="mt-4 flex gap-2"
+            className="mt-3 flex gap-2"
             onSubmit={(e) => {
               e.preventDefault();
               send(input);
@@ -591,6 +649,13 @@ function StepBody({
         >
           {source ? "Hide the source" : "Show the source"}
         </button>
+      )}
+
+      {card.consensusMeta && (
+        <p className="rounded-lg bg-neutral-50 px-3 py-2 text-[11px] leading-snug text-neutral-500">
+          <span className="font-medium text-neutral-700">Consensus pick</span>
+          {" · "}{card.consensusMeta.rationale}
+        </p>
       )}
     </div>
   );

@@ -9,9 +9,10 @@ import {
 } from "@/lib/db/records";
 import { renderTension, type TensionTable } from "@/lib/render";
 import { runTurn, runBasics } from "@/lib/agent";
+import { runConsensus } from "@/lib/server/consensus";
 import { getUserId } from "@/lib/server/identity";
 import { logGap, logGesture } from "@/lib/server/log";
-import type { AnswerCard, GlossTerm, PathRung } from "@/lib/guide/types";
+import type { AnswerCard, GlossTerm, PathRung, UserCriteria } from "@/lib/guide/types";
 
 /** One conversational turn. The agent frames the question, searches the artifact,
  *  and composes a grounded answer; a pinned tension is rendered verbatim here so
@@ -120,6 +121,73 @@ export async function basics(
     return { ...base, headline: result.headline, reply: result.reply, path };
   } catch {
     return { ...base, reply: "Couldn't build the basics path. Try again." };
+  }
+}
+
+/** Consensus turn: three debaters answer in parallel; a judge picks the best one
+ *  based on the learner's stated priorities. Same post-processing as `turn`. */
+export async function consensusTurn(
+  sessionId: string,
+  question: string,
+  history: string,
+  criteria: UserCriteria,
+): Promise<AnswerCard> {
+  const base: AnswerCard = {
+    question,
+    headline: null,
+    reply: "",
+    table: null,
+    branches: [],
+    sourceConceptIds: [],
+    outOfScope: false,
+  };
+  if (!question.trim()) return base;
+  try {
+    const userId = await getUserId(sessionId);
+    const v = await frozenVersion(SERVE_CORPUS_VERSION);
+    if (!v) return { ...base, reply: "No frozen corpus is available.", outOfScope: true };
+
+    const t0 = Date.now();
+    const answer = await runConsensus(question, history, v.id, userId, criteria);
+
+    let table: TensionTable | null = null;
+    if (answer.tensionId != null) {
+      const rec = await getTension(answer.tensionId);
+      table = rec ? renderTension(rec) : null;
+    }
+
+    const briefs = await getConceptBriefs(answer.keyTermIds);
+    const glossary: GlossTerm[] = briefs
+      .filter((b) => b.definition)
+      .map((b) => ({ id: b.id, term: b.name, definition: b.definition! }));
+
+    if (answer.outOfScope) await logGap(question, userId, v.id);
+    await logGesture({
+      userId,
+      gesture: "consensus-turn",
+      targetEntity: answer.sourceConceptIds[0] ?? null,
+      recordKind: answer.tensionId != null ? "tension" : "concept",
+      recordId: answer.tensionId ?? answer.sourceConceptIds[0] ?? null,
+      latencyMs: Date.now() - t0,
+      model: null,
+      tokens: null,
+    });
+
+    const consensusMeta = "consensusMeta" in answer ? answer.consensusMeta : undefined;
+
+    return {
+      question,
+      headline: answer.headline,
+      reply: answer.reply,
+      table,
+      branches: answer.branches,
+      sourceConceptIds: answer.sourceConceptIds,
+      outOfScope: answer.outOfScope,
+      glossary,
+      consensusMeta,
+    };
+  } catch {
+    return { ...base, reply: "That didn't go through. Try again, or rephrase your question." };
   }
 }
 

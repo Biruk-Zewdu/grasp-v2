@@ -15,6 +15,30 @@ const PROVIDERS = { openai: openaiProvider, anthropic: anthropicProvider } as co
 
 export type StructuredResult<T> = ProviderResult<T>;
 
+/** Like structuredCall but skips the per-call budget check — use inside
+ *  orchestrators that do a single checkAndConsume at the top. */
+export async function rawStructuredCall<T>(opts: {
+  role: Role;
+  system: string;
+  user: string;
+  schemaName: string;
+  schema: Record<string, unknown>;
+  maxTokens?: number;
+  cacheSystem?: boolean;
+}): Promise<StructuredResult<T>> {
+  if (!liveEnabled()) return { ok: false, reason: "template-mode" };
+  const provider = PROVIDERS[MODEL_PROVIDER];
+  return provider.structured<T>({
+    model: MODELS[MODEL_PROVIDER][opts.role],
+    system: opts.system,
+    user: opts.user,
+    schemaName: opts.schemaName,
+    schema: opts.schema,
+    maxTokens: opts.maxTokens ?? 1024,
+    cacheSystem: opts.cacheSystem,
+  });
+}
+
 export async function structuredCall<T>(opts: {
   sessionId: string; // identity key (uuid): anon-auth uid, else client session uuid
   role: Role;
