@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Logo } from "./logo";
+import ToolSidebar from "./tool-sidebar";
 import { summary, type SummaryView } from "./hub-actions";
 import type { Dashboard as DashboardData } from "@/lib/db/records";
 
@@ -25,15 +26,25 @@ export default function Dashboard({ data }: { data: DashboardData }) {
   const ask = (q: string) => router.push(`/learn/${data.versionId}/guide?q=${encodeURIComponent(q)}`);
 
   return (
-    <div className="min-h-dvh bg-neutral-50 text-neutral-900">
-      <header className="flex h-14 items-center gap-2.5 border-b border-neutral-200 bg-white/80 px-5 backdrop-blur">
-        <button onClick={() => router.push("/")} className="flex items-center gap-2.5">
-          <Logo className="h-6 w-6 text-neutral-900" />
-          <span className="text-base font-semibold tracking-tight">grasp</span>
-        </button>
-      </header>
+    <div className="flex min-h-dvh bg-neutral-50 text-neutral-900">
+      <ToolSidebar
+        versionId={data.versionId}
+        title={data.title}
+        active="home"
+        hasTension={data.tensionId != null}
+        hasAssessment={data.hasAssessment}
+      />
 
-      <main className="mx-auto w-full max-w-4xl px-5 py-10">
+      {/* mobile top bar (sidebar is desktop-only) */}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="flex h-14 items-center gap-2.5 border-b border-neutral-200 bg-white/80 px-5 backdrop-blur lg:hidden">
+          <button onClick={() => router.push("/")} className="flex items-center gap-2.5">
+            <Logo className="h-6 w-6 text-neutral-900" />
+            <span className="text-base font-semibold tracking-tight">grasp</span>
+          </button>
+        </header>
+
+        <main className="mx-auto w-full max-w-4xl px-5 py-10">
         {/* Title */}
         <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Your document</p>
         <h1 className="mt-1 text-2xl font-semibold leading-tight tracking-tight">{data.title}</h1>
@@ -104,7 +115,8 @@ export default function Dashboard({ data }: { data: DashboardData }) {
         <button onClick={() => router.push(`/learn/${data.versionId}/guide`)} className="mt-3 text-xs text-neutral-400 underline-offset-2 hover:text-neutral-700 hover:underline">
           …or just ask a question →
         </button>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }
