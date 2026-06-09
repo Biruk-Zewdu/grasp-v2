@@ -10,9 +10,6 @@ out/
 dist/
 *.tsbuildinfo
 .vercel/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
 
 # Python
 __pycache__/
@@ -26,7 +23,6 @@ venv/
 
 # OS / editor
 .DS_Store
-Thumbs.db
 .idea/
 .vscode/
 

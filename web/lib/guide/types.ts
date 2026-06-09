@@ -1,5 +1,7 @@
 import type { TensionTable } from "@/lib/render";
 
+export type EnsembleLevel = "simple" | "standard" | "thorough";
+
 // User-stated priorities for the consensus judge (each 1–5, 3 = neutral).
 export type UserCriteria = {
   simplicity: number;  // prefer plain language and analogies
@@ -7,9 +9,11 @@ export type UserCriteria = {
   conciseness: number; // prefer brief, tight answers
 };
 
-// The browse catalog for the dashboard's left pane: the contested "big questions"
-// (tension dimensions) and the "key ideas" (concept names).
+// The browse catalog for the dashboard's left pane: the decomposition "study path"
+// (subtopics — the lesson rail), the contested "big questions" (tension
+// dimensions), and the "key ideas" (concept names).
 export type Catalog = {
+  subtopics: { id: number; title: string; summary: string | null }[];
   questions: { id: number; text: string }[];
   ideas: { id: number; name: string }[];
 };
@@ -43,5 +47,11 @@ export type AnswerCard = {
   outOfScope: boolean;
   glossary?: GlossTerm[]; // key terms in the reply, hover-glossed
   path?: PathRung[]; // a foundations ladder (when this card is a "start from the basics")
-  consensusMeta?: { winnerId: number; rationale: string }; // present when consensus mode was used
+  ensemble?: {
+    level: EnsembleLevel;
+    agreementScore: number; // 0–100
+    perspectives: { name: string; text: string }[];
+    disagreements: string[];
+  };
+  consensusMeta?: { winnerId: number; rationale: string }; // present when criteria-based consensus was used
 };

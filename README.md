@@ -1,74 +1,37 @@
-# Grasp
+# Grasp v2 — upload → grasp
 
-An AI system for studying AI ideas — an **invisible means-ends guide** that walks you to a good-enough *grasp* of an idea one clean step at a time, surfacing tensions as tables with depth on demand.
+The upload-driven version of [Grasp](https://github.com/Biruk-Zewdu/grasp). A student
+**uploads a PDF**; the system runs course-derived **operators** to turn it into a typed,
+grounded, possibly-contested knowledge artifact, then **teaches it** — a generated lesson,
+an interactive guide, and a before/after assessment.
 
-Built from first principles (Foundations of AI for Business). The intelligence lives in a typed, curated knowledge **artifact** — the model is only an instrument that renders it, never the author.
+> v1 (the hand-curated, frozen-corpus version) stays live and untouched at its own URL.
+> v2 is a **separate project** with its own repo, deployment, and database.
 
-## Design & build docs
+**The full design + plan is in [`V2_DESIGN.md`](V2_DESIGN.md).** Read it first.
 
-The design rationale and the build playbook live in the parent workspace (one level up):
+## Thesis (unchanged)
+Intelligence is in the **design** — the extraction operators, the typed schema, validation,
+and the verbatim tension-preservation guard — not the model weights. The LLM is the
+instrument that executes operators over a knowledge representation.
 
-- **Design** — `../6_design/` (start with `PRODUCT_SPEC.md`)
-- **Build playbook** — `../7_build_playbook/` (start with `00_INDEX.md`)
-
-## Repo layout
-
+## Layout
 | Path | Role |
 |---|---|
-| `supabase/` | Supabase config + `migrations/` (SQL = the schema **source of truth**) |
-| `db/` | loader / seed helpers — Python |
-| `schemas/` | Pydantic models that mirror the DDL — Python |
-| `build/` | The M1 artifact: agent-produced records + `validate`/`load` |
-| `web/` | Next.js app — sequencer, renderer, index, UI, admin |
-| `eval/` | Aspiration-level, pluralism, and schema-drift checks |
-
-Two languages on purpose: **Python** = validate + load only; everything serve-side is **TypeScript / Next.js**. See `7_build_playbook/01_STACK.md`.
+| `web/` | Next.js serve app (Guide, lesson, assessment, upload, reveal) — copied from v1, diverging |
+| `build/` | The extraction operators: PDF → typed artifact (Python) |
+| `supabase/migrations/` | Schema source of truth (loosened: tension optional) |
+| `db/` · `schemas/` · `eval/` | Loader/belief helpers · Pydantic mirror · evals |
 
 ## Status
+**Phases A–G built** (the full demo arc): upload → reveal → learn (lesson + guide +
+verbatim tension) → pre/post assessment. Typecheck + build + tests green.
 
-Live on Vercel over the frozen **v1** corpus. M0–M4 built; serve layer is the agentic Guide (`web/`).
+**Before it runs, do the one manual step in [`SETUP.md`](SETUP.md)** — provision the
+brand-new Supabase project and apply migrations. Until then `pnpm dev` builds but DB
+reads fail. Building a lesson/assessment also needs `SERVE_MODE=live` + an API key
+(extraction is the one thing template mode can't fake); the example/explore path and
+the whole UI work without it.
 
-## Working on it (teammates)
-
-### Run it locally to try it out
-
-```bash
-git clone https://github.com/Biruk-Zewdu/grasp.git
-cd grasp/web
-cp .env.example .env.local      # then fill in the values — see below
-pnpm install
-pnpm dev                        # → http://localhost:3000
-```
-
-**Env values** (`web/.env.example` explains each):
-- The fastest start needs **no API key** — set `SERVE_MODE=template` and the whole
-  Guide runs from the frozen records at zero cost.
-- For live AI answers, set `SERVE_MODE=live` and use **your own** `OPENAI_API_KEY`.
-- Ask the owner for `DATABASE_URL` (or your own read-only role). Never commit `.env.local`.
-
-Before opening a PR, make sure it's clean:
-
-```bash
-pnpm typecheck
-SERVE_MODE=template pnpm build
-SERVE_MODE=template pnpm exec vitest run
-```
-
-### Submitting changes (PR workflow)
-
-`main` is protected — you can't push to it directly. Work on a branch and open a PR.
-
-```bash
-git checkout -b your-name/short-description   # one branch per change
-# ...make your changes, commit...
-git add -A
-git commit -m "what you changed and why"
-git push -u origin your-name/short-description
-```
-
-Then on GitHub: open a **Pull Request** into `main`. Vercel builds a **preview URL**
-for your branch automatically (production is untouched). The owner reviews and merges.
-
-- Keep one branch per logical change; rebase on `main` if it moves: `git fetch && git rebase origin/main`.
-- Never commit secrets (`.env.local` is gitignored — keep it that way).
-- ⚠️ Don't push to `main` directly.
+The demo arc (`V2_DESIGN.md` §8): "explore an example" for instant content, then upload
+a real PDF to show the transformation live, learn over it, and take the before→after check.

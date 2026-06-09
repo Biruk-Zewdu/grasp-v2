@@ -8,7 +8,10 @@ export type ServeMode = "template" | "live";
 export type ProviderName = "openai" | "anthropic";
 // `reason` is the grounded-reasoner path (SERVE_DESIGN §9): a mid/large model
 // that reasons over the retrieved sub-graph, not the nano `render` paraphraser.
-export type Role = "render" | "reason" | "classify" | "probe";
+// `extract` is the build-time operator path (v2): turns uploaded text into the
+// typed artifact (concepts/relations/claims/tension). Mid tier — it must reason
+// over the document, not just paraphrase.
+export type Role = "render" | "reason" | "classify" | "probe" | "extract";
 
 // Default is template: zero model calls, zero cost, no key required. The Guide
 // works fully in template mode (records fix the content; the model only phrases).
@@ -20,7 +23,7 @@ export const SERVE_CORPUS_VERSION = process.env.SERVE_CORPUS_VERSION ?? "v1";
 // The model is a swappable instrument (the project's thesis). Pick the provider
 // with one env var; default OpenAI.
 export const MODEL_PROVIDER: ProviderName =
-  process.env.MODEL_PROVIDER === "openai" ? "openai" : "anthropic";
+  process.env.MODEL_PROVIDER === "anthropic" ? "anthropic" : "openai";
 
 // Per-provider model ids by role (small render/probe, mid classify). All
 // env-overridable — bump these as providers ship new models.
@@ -30,12 +33,14 @@ export const MODELS: Record<ProviderName, Record<Role, string>> = {
     reason: process.env.OPENAI_MODEL_REASON ?? "gpt-5.4-mini",
     classify: process.env.OPENAI_MODEL_CLASSIFY ?? "gpt-5.4-mini",
     probe: process.env.OPENAI_MODEL_PROBE ?? "gpt-5.4-nano",
+    extract: process.env.OPENAI_MODEL_EXTRACT ?? "gpt-5.4-mini",
   },
   anthropic: {
     render: process.env.ANTHROPIC_MODEL_RENDER ?? "claude-haiku-4-5-20251001",
     reason: process.env.ANTHROPIC_MODEL_REASON ?? "claude-sonnet-4-6",
     classify: process.env.ANTHROPIC_MODEL_CLASSIFY ?? "claude-sonnet-4-6",
     probe: process.env.ANTHROPIC_MODEL_PROBE ?? "claude-haiku-4-5-20251001",
+    extract: process.env.ANTHROPIC_MODEL_EXTRACT ?? "claude-sonnet-4-6",
   },
 };
 

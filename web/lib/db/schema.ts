@@ -1,25 +1,19 @@
-import { pgTable, unique, integer, text, timestamp, foreignKey, check, pgPolicy, uuid, index, boolean, primaryKey, pgEnum } from "drizzle-orm/pg-core"
+import { pgTable, foreignKey, integer, text, unique, check, index, boolean, timestamp, pgPolicy, primaryKey, pgEnum } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
 export const abstraction = pgEnum("abstraction", ['foundational', 'paradigmatic', 'mechanism', 'instance', 'example'])
+export const assessPhase = pgEnum("assess_phase", ['pre', 'post'])
 export const beliefLabel = pgEnum("belief_label", ['in', 'out'])
+export const buildStatus = pgEnum("build_status", ['building', 'ready', 'failed'])
 export const claimStatus = pgEnum("claim_status", ['established', 'contested', 'conditional', 'default'])
 export const claimType = pgEnum("claim_type", ['causal', 'correlative', 'contradictory', 'conditional', 'definitional', 'compositional', 'analogical'])
+export const corpusOrigin = pgEnum("corpus_origin", ['example', 'uploaded'])
 export const entityType = pgEnum("entity_type", ['Problem', 'Paradigm', 'Mechanism', 'Representation', 'Thinker', 'Example', 'Hypothesis'])
 export const paradigm = pgEnum("paradigm", ['reinforcement', 'society', 'shannon', 'simon', 'von_neumann', 'mccarthy_krr', 'bridging', 'neutral'])
 export const probeKind = pgEnum("probe_kind", ['concept', 'tension'])
 export const relationType = pgEnum("relation_type", ['generalizes', 'specializes', 'causes', 'enables', 'contradicts', 'composed_of', 'proposed_by', 'exemplified_by', 'addresses', 'extends'])
 export const sourceKind = pgEnum("source_kind", ['session', 'paper'])
 
-
-export const corpusVersion = pgTable("corpus_version", {
-	id: integer().primaryKey().generatedAlwaysAsIdentity({ name: "corpus_version_id_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 2147483647, cache: 1 }),
-	label: text().notNull(),
-	frozenAt: timestamp("frozen_at", { withTimezone: true, mode: 'string' }),
-	notes: text(),
-}, (table) => [
-	unique("corpus_version_label_key").on(table.label),
-]);
 
 export const source = pgTable("source", {
 	id: integer().primaryKey().generatedAlwaysAsIdentity({ name: "source_id_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 2147483647, cache: 1 }),
@@ -107,11 +101,12 @@ export const claim = pgTable("claim", {
 	conceptIds: integer("concept_ids").array().default([]).notNull(),
 	claimType: claimType("claim_type").notNull(),
 	thinker: text(),
-	paradigm: paradigm().notNull(),
+	paradigm: paradigm(),
 	conditions: text(),
 	status: claimStatus().default('default').notNull(),
 	sourceId: integer("source_id"),
 	corpusVersion: integer("corpus_version").notNull(),
+	paradigmLabel: text("paradigm_label"),
 }, (table) => [
 	foreignKey({
 			columns: [table.corpusVersion],
@@ -171,54 +166,6 @@ export const justification = pgTable("justification", {
 		}),
 ]);
 
-export const tension = pgTable("tension", {
-	id: integer().primaryKey().generatedAlwaysAsIdentity({ name: "tension_id_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 2147483647, cache: 1 }),
-	claimA: integer("claim_a").notNull(),
-	claimB: integer("claim_b").notNull(),
-	dimension: text(),
-	conditionsA: text("conditions_a").notNull(),
-	conditionsB: text("conditions_b").notNull(),
-	sessionIds: integer("session_ids").array().default([]).notNull(),
-	corpusVersion: integer("corpus_version").notNull(),
-}, (table) => [
-	foreignKey({
-			columns: [table.claimA],
-			foreignColumns: [claim.id],
-			name: "tension_claim_a_fkey"
-		}),
-	foreignKey({
-			columns: [table.claimB],
-			foreignColumns: [claim.id],
-			name: "tension_claim_b_fkey"
-		}),
-	foreignKey({
-			columns: [table.corpusVersion],
-			foreignColumns: [corpusVersion.id],
-			name: "tension_corpus_version_fkey"
-		}),
-	check("tension_two_sided", sql`(length(TRIM(BOTH FROM conditions_a)) > 0) AND (length(TRIM(BOTH FROM conditions_b)) > 0)`),
-]);
-
-export const viewpoint = pgTable("viewpoint", {
-	id: integer().primaryKey().generatedAlwaysAsIdentity({ name: "viewpoint_id_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 2147483647, cache: 1 }),
-	claimId: integer("claim_id").notNull(),
-	paradigm: paradigm().notNull(),
-	thinker: text(),
-	conditions: text(),
-	supersededBy: integer("superseded_by"),
-}, (table) => [
-	foreignKey({
-			columns: [table.claimId],
-			foreignColumns: [claim.id],
-			name: "viewpoint_claim_id_fkey"
-		}),
-	foreignKey({
-			columns: [table.supersededBy],
-			foreignColumns: [table.id],
-			name: "viewpoint_superseded_by_fkey"
-		}),
-]);
-
 export const probe = pgTable("probe", {
 	id: integer().primaryKey().generatedAlwaysAsIdentity({ name: "probe_id_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 2147483647, cache: 1 }),
 	kind: probeKind().notNull(),
@@ -248,9 +195,76 @@ export const probe = pgTable("probe", {
 	check("probe_target", sql`((kind = 'tension'::probe_kind) AND (tension_id IS NOT NULL)) OR ((kind = 'concept'::probe_kind) AND (array_length(concept_ids, 1) >= 1))`),
 ]);
 
+export const gapLog = pgTable("gap_log", {
+	id: integer().primaryKey().generatedAlwaysAsIdentity({ name: "gap_log_id_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 2147483647, cache: 1 }),
+	goalText: text("goal_text").notNull(),
+	userId: text("user_id"),
+	corpusVersion: integer("corpus_version"),
+	resolved: boolean().default(false).notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("gap_log_unresolved_idx").using("btree", table.createdAt.desc().nullsFirst().op("timestamptz_ops")).where(sql`(NOT resolved)`),
+	foreignKey({
+			columns: [table.corpusVersion],
+			foreignColumns: [corpusVersion.id],
+			name: "gap_log_corpus_version_fkey"
+		}),
+]);
+
+export const corpusVersion = pgTable("corpus_version", {
+	id: integer().primaryKey().generatedAlwaysAsIdentity({ name: "corpus_version_id_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 2147483647, cache: 1 }),
+	label: text().notNull(),
+	frozenAt: timestamp("frozen_at", { withTimezone: true, mode: 'string' }),
+	notes: text(),
+	origin: corpusOrigin().default('uploaded').notNull(),
+	owner: text(),
+	status: buildStatus().default('ready').notNull(),
+	sourceName: text("source_name"),
+	builtAt: timestamp("built_at", { withTimezone: true, mode: 'string' }),
+}, (table) => [
+	index("corpus_version_owner_idx").using("btree", table.owner.asc().nullsLast().op("text_ops")),
+	unique("corpus_version_label_key").on(table.label),
+]);
+
+export const viewpoint = pgTable("viewpoint", {
+	id: integer().primaryKey().generatedAlwaysAsIdentity({ name: "viewpoint_id_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 2147483647, cache: 1 }),
+	claimId: integer("claim_id").notNull(),
+	paradigm: paradigm(),
+	thinker: text(),
+	conditions: text(),
+	supersededBy: integer("superseded_by"),
+	paradigmLabel: text("paradigm_label"),
+}, (table) => [
+	foreignKey({
+			columns: [table.claimId],
+			foreignColumns: [claim.id],
+			name: "viewpoint_claim_id_fkey"
+		}),
+	foreignKey({
+			columns: [table.supersededBy],
+			foreignColumns: [table.id],
+			name: "viewpoint_superseded_by_fkey"
+		}),
+]);
+
+export const gestureLog = pgTable("gesture_log", {
+	id: integer().primaryKey().generatedAlwaysAsIdentity({ name: "gesture_log_id_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 2147483647, cache: 1 }),
+	userId: text("user_id"),
+	gesture: text().notNull(),
+	targetEntity: integer("target_entity"),
+	recordKind: text("record_kind"),
+	recordId: integer("record_id"),
+	latencyMs: integer("latency_ms"),
+	model: text(),
+	tokens: integer(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("gesture_log_created_idx").using("btree", table.createdAt.desc().nullsFirst().op("timestamptz_ops")),
+]);
+
 export const appSession = pgTable("app_session", {
 	id: integer().primaryKey().generatedAlwaysAsIdentity({ name: "app_session_id_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 2147483647, cache: 1 }),
-	userId: uuid("user_id").notNull(),
+	userId: text("user_id").notNull(),
 	corpusVersion: integer("corpus_version"),
 	targetEntity: integer("target_entity"),
 	seenEntityIds: integer("seen_entity_ids").array().default([]).notNull(),
@@ -266,45 +280,159 @@ export const appSession = pgTable("app_session", {
 			name: "app_session_corpus_version_fkey"
 		}),
 	unique("app_session_user_id_key").on(table.userId),
-	pgPolicy("app_session_self", { as: "permissive", for: "all", to: ["public"], using: sql`(auth.uid() = user_id)`, withCheck: sql`(auth.uid() = user_id)`  }),
+	pgPolicy("app_session_self", { as: "permissive", for: "all", to: ["public"], using: sql`((auth.uid())::text = user_id)`, withCheck: sql`((auth.uid())::text = user_id)`  }),
 ]);
 
-export const gapLog = pgTable("gap_log", {
-	id: integer().primaryKey().generatedAlwaysAsIdentity({ name: "gap_log_id_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 2147483647, cache: 1 }),
-	goalText: text("goal_text").notNull(),
-	userId: uuid("user_id"),
-	corpusVersion: integer("corpus_version"),
-	resolved: boolean().default(false).notNull(),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+export const tension = pgTable("tension", {
+	id: integer().primaryKey().generatedAlwaysAsIdentity({ name: "tension_id_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 2147483647, cache: 1 }),
+	claimA: integer("claim_a").notNull(),
+	claimB: integer("claim_b").notNull(),
+	dimension: text(),
+	conditionsA: text("conditions_a").notNull(),
+	conditionsB: text("conditions_b").notNull(),
+	sessionIds: integer("session_ids").array().default([]).notNull(),
+	corpusVersion: integer("corpus_version").notNull(),
+	paradigmLabelA: text("paradigm_label_a"),
+	paradigmLabelB: text("paradigm_label_b"),
+	thinkerA: text("thinker_a"),
+	thinkerB: text("thinker_b"),
 }, (table) => [
-	index("gap_log_unresolved_idx").using("btree", table.createdAt.desc().nullsFirst().op("timestamptz_ops")).where(sql`(NOT resolved)`),
+	foreignKey({
+			columns: [table.claimA],
+			foreignColumns: [claim.id],
+			name: "tension_claim_a_fkey"
+		}),
+	foreignKey({
+			columns: [table.claimB],
+			foreignColumns: [claim.id],
+			name: "tension_claim_b_fkey"
+		}),
 	foreignKey({
 			columns: [table.corpusVersion],
 			foreignColumns: [corpusVersion.id],
-			name: "gap_log_corpus_version_fkey"
+			name: "tension_corpus_version_fkey"
+		}),
+	check("tension_two_sided", sql`(length(TRIM(BOTH FROM conditions_a)) > 0) AND (length(TRIM(BOTH FROM conditions_b)) > 0)`),
+]);
+
+export const subtopic = pgTable("subtopic", {
+	id: integer().primaryKey().generatedAlwaysAsIdentity({ name: "subtopic_id_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 2147483647, cache: 1 }),
+	title: text().notNull(),
+	summary: text(),
+	conceptIds: integer("concept_ids").array().default([]).notNull(),
+	ordinal: integer().default(0).notNull(),
+	corpusVersion: integer("corpus_version").notNull(),
+}, (table) => [
+	index("subtopic_corpus_version_idx").using("btree", table.corpusVersion.asc().nullsLast().op("int4_ops")),
+	foreignKey({
+			columns: [table.corpusVersion],
+			foreignColumns: [corpusVersion.id],
+			name: "subtopic_corpus_version_fkey"
 		}),
 ]);
 
-export const gestureLog = pgTable("gesture_log", {
-	id: integer().primaryKey().generatedAlwaysAsIdentity({ name: "gesture_log_id_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 2147483647, cache: 1 }),
-	userId: uuid("user_id"),
-	gesture: text().notNull(),
-	targetEntity: integer("target_entity"),
-	recordKind: text("record_kind"),
-	recordId: integer("record_id"),
-	latencyMs: integer("latency_ms"),
-	model: text(),
-	tokens: integer(),
+export const lesson = pgTable("lesson", {
+	id: integer().primaryKey().generatedAlwaysAsIdentity({ name: "lesson_id_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 2147483647, cache: 1 }),
+	subtopicId: integer("subtopic_id").notNull(),
+	headline: text(),
+	body: text().notNull(),
+	keyTermIds: integer("key_term_ids").array().default([]).notNull(),
+	tensionId: integer("tension_id"),
+	sourceConceptIds: integer("source_concept_ids").array().default([]).notNull(),
+	corpusVersion: integer("corpus_version").notNull(),
+}, (table) => [
+	index("lesson_corpus_version_idx").using("btree", table.corpusVersion.asc().nullsLast().op("int4_ops")),
+	index("lesson_subtopic_id_idx").using("btree", table.subtopicId.asc().nullsLast().op("int4_ops")),
+	foreignKey({
+			columns: [table.corpusVersion],
+			foreignColumns: [corpusVersion.id],
+			name: "lesson_corpus_version_fkey"
+		}),
+	foreignKey({
+			columns: [table.subtopicId],
+			foreignColumns: [subtopic.id],
+			name: "lesson_subtopic_id_fkey"
+		}),
+	foreignKey({
+			columns: [table.tensionId],
+			foreignColumns: [tension.id],
+			name: "lesson_tension_id_fkey"
+		}),
+]);
+
+export const assessment = pgTable("assessment", {
+	id: integer().primaryKey().generatedAlwaysAsIdentity({ name: "assessment_id_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 2147483647, cache: 1 }),
+	corpusVersion: integer("corpus_version").notNull(),
+}, (table) => [
+	foreignKey({
+			columns: [table.corpusVersion],
+			foreignColumns: [corpusVersion.id],
+			name: "assessment_corpus_version_fkey"
+		}),
+	unique("assessment_corpus_version_key").on(table.corpusVersion),
+]);
+
+export const assessmentQuestion = pgTable("assessment_question", {
+	id: integer().primaryKey().generatedAlwaysAsIdentity({ name: "assessment_question_id_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 2147483647, cache: 1 }),
+	assessmentId: integer("assessment_id").notNull(),
+	ordinal: integer().default(0).notNull(),
+	stem: text().notNull(),
+	options: text().array().notNull(),
+	answerIndex: integer("answer_index").notNull(),
+	claimId: integer("claim_id"),
+	subtopicId: integer("subtopic_id"),
+	rationale: text(),
+}, (table) => [
+	index("assessment_question_assessment_id_idx").using("btree", table.assessmentId.asc().nullsLast().op("int4_ops")),
+	foreignKey({
+			columns: [table.assessmentId],
+			foreignColumns: [assessment.id],
+			name: "assessment_question_assessment_id_fkey"
+		}),
+	foreignKey({
+			columns: [table.claimId],
+			foreignColumns: [claim.id],
+			name: "assessment_question_claim_id_fkey"
+		}),
+	foreignKey({
+			columns: [table.subtopicId],
+			foreignColumns: [subtopic.id],
+			name: "assessment_question_subtopic_id_fkey"
+		}),
+]);
+
+export const assessmentResponse = pgTable("assessment_response", {
+	id: integer().primaryKey().generatedAlwaysAsIdentity({ name: "assessment_response_id_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 2147483647, cache: 1 }),
+	userId: text("user_id").notNull(),
+	questionId: integer("question_id").notNull(),
+	phase: assessPhase().notNull(),
+	chosenIndex: integer("chosen_index").notNull(),
+	correct: boolean().notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 }, (table) => [
-	index("gesture_log_created_idx").using("btree", table.createdAt.desc().nullsFirst().op("timestamptz_ops")),
+	index("assessment_response_user_id_phase_idx").using("btree", table.userId.asc().nullsLast().op("text_ops"), table.phase.asc().nullsLast().op("text_ops")),
+	foreignKey({
+			columns: [table.questionId],
+			foreignColumns: [assessmentQuestion.id],
+			name: "assessment_response_question_id_fkey"
+		}),
 ]);
 
 export const usageCounter = pgTable("usage_counter", {
-	userId: uuid("user_id").notNull(),
+	userId: text("user_id").notNull(),
 	bucket: text().notNull(),
 	windowStart: timestamp("window_start", { withTimezone: true, mode: 'string' }).notNull(),
 	count: integer().default(0).notNull(),
 }, (table) => [
 	primaryKey({ columns: [table.userId, table.bucket, table.windowStart], name: "usage_counter_pkey"}),
+]);
+
+export const studySheet = pgTable("study_sheet", {
+	id: integer().primaryKey().generatedAlwaysAsIdentity({ name: "study_sheet_id_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 2147483647, cache: 1 }),
+	corpusVersion: integer("corpus_version").notNull(),
+	data: text().notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	foreignKey({ columns: [table.corpusVersion], foreignColumns: [corpusVersion.id], name: "study_sheet_corpus_version_fkey" }),
+	unique("study_sheet_corpus_version_key").on(table.corpusVersion),
 ]);
