@@ -104,30 +104,6 @@ export default function Dashboard({ data }: { data: DashboardData }) {
         <button onClick={() => router.push(`/learn/${data.versionId}/guide`)} className="mt-3 text-xs text-neutral-400 underline-offset-2 hover:text-neutral-700 hover:underline">
           …or just ask a question →
         </button>
-
-        {/* Study path */}
-        {data.subtopics.length > 0 && (
-          <div className="mt-10">
-            <p className="mb-3 text-xs font-medium uppercase tracking-wide text-neutral-400">Study path</p>
-            <ol className="space-y-2">
-              {data.subtopics.map((s, i) => (
-                <li key={s.id}>
-                  <button
-                    onClick={() => go("/understand")}
-                    className="flex w-full items-start gap-3 rounded-xl border border-neutral-200 bg-white p-4 text-left transition-colors hover:border-neutral-300 hover:bg-neutral-50"
-                  >
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-xs font-medium text-neutral-600">{i + 1}</span>
-                    <span className="flex-1">
-                      <span className="block text-sm font-medium text-neutral-900">{s.title}</span>
-                      {s.summary && <span className="block text-xs leading-snug text-neutral-500">{s.summary}</span>}
-                    </span>
-                    <span className="text-neutral-300" aria-hidden>→</span>
-                  </button>
-                </li>
-              ))}
-            </ol>
-          </div>
-        )}
       </main>
     </div>
   );

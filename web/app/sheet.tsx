@@ -58,7 +58,7 @@ export default function Sheet({
                 </div>
                 <div className="space-y-2">
                   {data.concepts.map((c, i) => (
-                    <ConceptRow key={c.id} c={c} rank={i + 1} versionId={versionId} />
+                    <ConceptRow key={`${c.id}-${i}`} c={c} rank={i + 1} versionId={versionId} />
                   ))}
                 </div>
               </section>

@@ -92,11 +92,14 @@ export async function getOrBuildSheet(versionId: number, sessionId: string): Pro
   });
   if (!res.ok) return null;
 
-  // Attach the VERBATIM definitions to the model's ranked concepts.
+  // Attach the VERBATIM definitions to the model's ranked concepts. Dedupe by id —
+  // the model sometimes lists the same concept twice (which crashed React keys).
   const order = res.data.conceptOrder ?? [];
-  const briefs = await getConceptBriefs(order.map((o) => o.id));
+  const seen = new Set<number>();
+  const uniqOrder = order.filter((o) => (seen.has(o.id) ? false : (seen.add(o.id), true)));
+  const briefs = await getConceptBriefs(uniqOrder.map((o) => o.id));
   const defById = new Map(briefs.map((b) => [b.id, b]));
-  const concepts: SheetConcept[] = order
+  const concepts: SheetConcept[] = uniqOrder
     .filter((o) => defById.has(o.id))
     .map((o) => {
       const b = defById.get(o.id)!;
