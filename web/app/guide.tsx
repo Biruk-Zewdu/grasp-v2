@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import {
@@ -17,10 +17,10 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { turn, basics, expandSources, lesson } from "./actions";
+import { turn, basics, expandSources, lesson, ensembleTurn } from "./actions";
 import Assessment from "./assessment";
 import { Logo } from "./logo";
-import type { AnswerCard, Catalog, GlossTerm } from "@/lib/guide/types";
+import type { AnswerCard, Catalog, GlossTerm, EnsembleLevel } from "@/lib/guide/types";
 import type { TensionTable } from "@/lib/render";
 
 // Agentic moves the learner can trigger on the current answer — each is a
@@ -68,6 +68,8 @@ export default function Guide({
   const [input, setInput] = useState("");
   const [pending, start] = useTransition();
   const [assessPhase, setAssessPhase] = useState<"pre" | "post" | null>(null);
+  const [ensembleOn, setEnsembleOn] = useState(false);
+  const [ensembleLevel, setEnsembleLevel] = useState<EnsembleLevel>("standard");
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const stepCount = thread.reduce((n, g) => n + g.length, 0);
@@ -128,7 +130,10 @@ export default function Guide({
     const add = continued && thread.length ? pushStep : pushGroup;
     start(async () => {
       try {
-        add(await turn(sessionId, q, h, versionId));
+        const card = ensembleOn
+          ? await ensembleTurn(sessionId, q, h, ensembleLevel, versionId)
+          : await turn(sessionId, q, h, versionId);
+        add(card);
       } catch {
         add(fallbackCard(q, "That didn't reach the server. Check your connection and try again."));
       }
@@ -337,6 +342,12 @@ export default function Guide({
 
         {/* RIGHT — Conversation outline + ask */}
         <aside className="flex min-h-0 flex-col border-t border-neutral-200 bg-white p-5 lg:border-l lg:border-t-0">
+          <EnsemblePanel
+            on={ensembleOn}
+            level={ensembleLevel}
+            onToggle={() => setEnsembleOn((v) => !v)}
+            onLevel={setEnsembleLevel}
+          />
           <Label>Your session</Label>
           <div className="mt-3 min-h-0 flex-1 space-y-1 overflow-y-auto">
             {thread.length === 0 ? (
@@ -681,6 +692,8 @@ function StepBody({
           {source ? "Hide the source" : "Show the source"}
         </button>
       )}
+
+      {card.ensemble && <EnsembleBadge ensemble={card.ensemble} />}
     </div>
   );
 }
@@ -904,9 +917,191 @@ function SourceBlock({ passages }: { passages: string[] }) {
       <Label>Source</Label>
       {passages.map((p, i) => (
         <p key={i} className="text-xs leading-relaxed text-neutral-600">
-          “{p.length > 360 ? p.slice(0, 360) + "…" : p}”
+          &ldquo;{p.length > 360 ? p.slice(0, 360) + "…" : p}&rdquo;
         </p>
       ))}
+    </div>
+  );
+}
+
+// ── Ensemble UI ───────────────────────────────────────────────────────────────
+
+const ENSEMBLE_LEVELS: { value: EnsembleLevel; label: string; desc: string; calls: string }[] = [
+  {
+    value: "simple",
+    label: "Simple",
+    desc: "2 perspectives — Factual + Conceptual — then synthesised.",
+    calls: "3 API calls",
+  },
+  {
+    value: "standard",
+    label: "Standard",
+    desc: "3 perspectives — adds a Critical lens that flags caveats and edge cases.",
+    calls: "4 API calls",
+  },
+  {
+    value: "thorough",
+    label: "Thorough",
+    desc: "5 perspectives — Factual, Conceptual, Critical, Analogical, Pedagogical — deepest synthesis.",
+    calls: "6 API calls",
+  },
+];
+
+function EnsemblePanel({
+  on,
+  level,
+  onToggle,
+  onLevel,
+}: {
+  on: boolean;
+  level: EnsembleLevel;
+  onToggle: () => void;
+  onLevel: (l: EnsembleLevel) => void;
+}) {
+  return (
+    <div className="mb-4 rounded-xl border border-neutral-200 bg-neutral-50 p-3.5">
+      {/* Header row */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-neutral-800">Ensemble mode</span>
+          <span
+            title="Runs multiple AI perspectives on your question, then a Consensus LLM synthesises the best answer. Reduces hallucination and improves reliability at the cost of extra API calls."
+            className="cursor-help text-[10px] text-neutral-400 hover:text-neutral-600"
+          >
+            ?
+          </span>
+        </div>
+        {/* Toggle */}
+        <button
+          onClick={onToggle}
+          aria-pressed={on}
+          className={
+            "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none " +
+            (on ? "bg-violet-600" : "bg-neutral-300")
+          }
+        >
+          <span
+            className={
+              "pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition-transform " +
+              (on ? "translate-x-4" : "translate-x-0")
+            }
+          />
+        </button>
+      </div>
+
+      {/* Description */}
+      <p className="mt-1.5 text-[11px] leading-relaxed text-neutral-500">
+        {on
+          ? "Each answer runs several perspectives then a Consensus LLM synthesises the result."
+          : "Off — answers use a single model call. Toggle on to use ensemble reasoning."}
+      </p>
+
+      {/* Level picker — only shown when on */}
+      {on && (
+        <div className="mt-3 space-y-1.5">
+          {ENSEMBLE_LEVELS.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => onLevel(opt.value)}
+              className={
+                "flex w-full flex-col items-start gap-0.5 rounded-lg border px-3 py-2 text-left transition-colors " +
+                (level === opt.value
+                  ? "border-violet-300 bg-violet-50"
+                  : "border-neutral-200 bg-white hover:border-neutral-300 hover:bg-neutral-50")
+              }
+            >
+              <div className="flex w-full items-center justify-between">
+                <span
+                  className={
+                    "text-xs font-semibold " +
+                    (level === opt.value ? "text-violet-800" : "text-neutral-700")
+                  }
+                >
+                  {opt.label}
+                </span>
+                <span className="text-[10px] text-neutral-400">{opt.calls}</span>
+              </div>
+              <span className="text-[11px] leading-snug text-neutral-500">{opt.desc}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EnsembleBadge({
+  ensemble,
+}: {
+  ensemble: NonNullable<AnswerCard["ensemble"]>;
+}) {
+  const [open, setOpen] = useState(false);
+  const score = ensemble.agreementScore;
+  const scoreColor =
+    score >= 80 ? "text-emerald-600" : score >= 55 ? "text-amber-600" : "text-red-500";
+  const barColor =
+    score >= 80 ? "bg-emerald-500" : score >= 55 ? "bg-amber-400" : "bg-red-400";
+
+  return (
+    <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+      {/* Summary row */}
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-2 text-left"
+      >
+        <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-400">
+          Ensemble
+        </span>
+        <span className="rounded-full bg-neutral-200 px-2 py-0.5 text-[10px] font-medium capitalize text-neutral-600">
+          {ensemble.level}
+        </span>
+        <span className="flex items-center gap-1.5 ml-auto">
+          <span className={`text-[11px] font-semibold tabular-nums ${scoreColor}`}>
+            {score}%
+          </span>
+          <div className="h-1.5 w-16 overflow-hidden rounded-full bg-neutral-200">
+            <div
+              className={`h-full rounded-full transition-all ${barColor}`}
+              style={{ width: `${score}%` }}
+            />
+          </div>
+          <span className="text-[10px] text-neutral-400">agreement</span>
+        </span>
+        <span className="ml-1 text-[10px] text-neutral-400">{open ? "▲" : "▼"}</span>
+      </button>
+
+      {open && (
+        <div className="mt-3 space-y-2">
+          {/* Disagreements */}
+          {ensemble.disagreements.length > 0 && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+              <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-amber-600">
+                Contested points
+              </p>
+              <ul className="space-y-0.5">
+                {ensemble.disagreements.map((d, i) => (
+                  <li key={i} className="text-[11px] leading-snug text-amber-800">
+                    · {d}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Individual perspectives */}
+          <p className="text-[10px] font-bold uppercase tracking-wide text-neutral-400">
+            Individual perspectives
+          </p>
+          {ensemble.perspectives.map((p, i) => (
+            <div key={i} className="rounded-lg border border-neutral-200 bg-white px-3 py-2">
+              <p className="mb-1 text-[10px] font-semibold text-neutral-500">{p.name}</p>
+              <p className="text-[11px] leading-relaxed text-neutral-600">
+                {p.text.length > 300 ? p.text.slice(0, 300) + "…" : p.text}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

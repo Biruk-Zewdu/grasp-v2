@@ -30,7 +30,7 @@ export type BasicsPath = {
   basics: { conceptId: number; why: string }[];
 };
 
-const CONSTITUTION =
+export const CONSTITUTION =
   "You are Grasp — a guide that helps a learner understand AI ideas, grounded in a curated, " +
   "course-built knowledge artifact (given below). Follow these rules without exception:\n" +
   "1. ANSWER THE QUESTION, NOT A RITUAL. A crisp question gets a DIRECT answer — no 'so you're " +

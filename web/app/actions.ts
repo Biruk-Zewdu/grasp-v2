@@ -6,13 +6,15 @@ import {
   getTension,
   getProvenanceForEntity,
   getConceptBriefs,
+  getArtifactContext,
 } from "@/lib/db/records";
 import { renderTension, type TensionTable } from "@/lib/render";
-import { runTurn, runBasics } from "@/lib/agent";
+import { runTurn, runBasics, CONSTITUTION } from "@/lib/agent";
+import { runEnsemble } from "@/lib/ensemble";
 import { getOrBuildLesson } from "@/lib/lesson";
 import { getUserId } from "@/lib/server/identity";
 import { logGap, logGesture } from "@/lib/server/log";
-import type { AnswerCard, GlossTerm, PathRung } from "@/lib/guide/types";
+import type { AnswerCard, GlossTerm, PathRung, EnsembleLevel } from "@/lib/guide/types";
 
 /** One conversational turn. The agent frames the question, searches the artifact,
  *  and composes a grounded answer; a pinned tension is rendered verbatim here so
@@ -177,6 +179,90 @@ export async function lesson(sessionId: string, subtopicId: number, title: strin
     };
   } catch {
     return { ...base, reply: "Couldn't build that lesson. Try again." };
+  }
+}
+
+/** Ensemble turn: run N persona-varied calls then a Consensus LLM synthesis.
+ *  Falls back to a regular turn if live mode is off or the ensemble errors. */
+export async function ensembleTurn(
+  sessionId: string,
+  question: string,
+  history: string,
+  level: EnsembleLevel,
+  versionId: number | null = null,
+): Promise<AnswerCard> {
+  const base: AnswerCard = {
+    question,
+    headline: null,
+    reply: "",
+    table: null,
+    branches: [],
+    sourceConceptIds: [],
+    outOfScope: false,
+  };
+  if (!question.trim()) return base;
+  try {
+    const userId = await getUserId(sessionId);
+    const v = await resolveVersion(versionId, SERVE_CORPUS_VERSION);
+    if (!v) return { ...base, reply: "No corpus is available.", outOfScope: true };
+
+    const t0 = Date.now();
+
+    // Run ensemble + regular structured call in parallel.
+    // The structured call provides grounding metadata (tensionId, concept IDs, branches).
+    // The ensemble provides a higher-quality synthesised reply + headline.
+    const [ensembleResult, structuredAnswer] = await Promise.all([
+      (async () => {
+        const artifact = await getArtifactContext(v.id);
+        return runEnsemble(question, history, artifact, CONSTITUTION, level);
+      })(),
+      runTurn(question, history, v.id, userId),
+    ]);
+
+    let table: TensionTable | null = null;
+    if (structuredAnswer.tensionId != null) {
+      const rec = await getTension(structuredAnswer.tensionId);
+      table = rec ? renderTension(rec) : null;
+    }
+
+    const briefs = await getConceptBriefs(structuredAnswer.keyTermIds);
+    const glossary: GlossTerm[] = briefs
+      .filter((b) => b.definition)
+      .map((b) => ({ id: b.id, term: b.name, definition: b.definition! }));
+
+    if (structuredAnswer.outOfScope) await logGap(question, userId, v.id);
+    await logGesture({
+      userId,
+      gesture: "turn",
+      targetEntity: structuredAnswer.sourceConceptIds[0] ?? null,
+      recordKind: structuredAnswer.tensionId != null ? "tension" : "concept",
+      recordId: structuredAnswer.tensionId ?? structuredAnswer.sourceConceptIds[0] ?? null,
+      latencyMs: Date.now() - t0,
+      model: null,
+      tokens: null,
+    });
+
+    return {
+      question,
+      // Prefer ensemble reply/headline; fall back to structured if ensemble failed
+      reply: ensembleResult?.reply || structuredAnswer.reply,
+      headline: ensembleResult?.headline ?? structuredAnswer.headline,
+      table,
+      branches: structuredAnswer.branches,
+      sourceConceptIds: structuredAnswer.sourceConceptIds,
+      outOfScope: structuredAnswer.outOfScope,
+      glossary,
+      ensemble: ensembleResult
+        ? {
+            level,
+            agreementScore: ensembleResult.agreementScore,
+            perspectives: ensembleResult.perspectives,
+            disagreements: ensembleResult.disagreements,
+          }
+        : undefined,
+    };
+  } catch {
+    return { ...base, reply: "That didn't go through. Check your connection and try again." };
   }
 }
 

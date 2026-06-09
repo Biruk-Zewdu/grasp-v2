@@ -1,5 +1,7 @@
 import type { TensionTable } from "@/lib/render";
 
+export type EnsembleLevel = "simple" | "standard" | "thorough";
+
 // The browse catalog for the dashboard's left pane: the decomposition "study path"
 // (subtopics — the lesson rail), the contested "big questions" (tension
 // dimensions), and the "key ideas" (concept names).
@@ -38,4 +40,10 @@ export type AnswerCard = {
   outOfScope: boolean;
   glossary?: GlossTerm[]; // key terms in the reply, hover-glossed
   path?: PathRung[]; // a foundations ladder (when this card is a "start from the basics")
+  ensemble?: {
+    level: EnsembleLevel;
+    agreementScore: number; // 0–100
+    perspectives: { name: string; text: string }[];
+    disagreements: string[];
+  };
 };
