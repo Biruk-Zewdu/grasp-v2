@@ -15,11 +15,10 @@ export default async function SheetPage({ params }: { params: Promise<{ v: strin
   if (!status || status.status !== "ready") notFound();
 
   const data = await getDashboard(versionId);
-  const allSubtopics = data.subtopics.map((s) => ({ id: s.id, title: s.title }));
   return (
     <>
       <AuthInit />
-      <Sheet versionId={versionId} title={data.title} allSubtopics={allSubtopics} />
+      <Sheet versionId={versionId} title={data.title} />
     </>
   );
 }
