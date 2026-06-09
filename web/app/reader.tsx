@@ -5,7 +5,7 @@ import { readLesson, ask, lessonSources, runOperator, type LessonView, type AskA
 import { Logo } from "./logo";
 import { Prose, TensionBlock, SourceBlock } from "./lesson-parts";
 import { operatorsForSection, type OperatorKey, type OperatorResult } from "@/lib/operators/catalog";
-import { recordSection, recordQuestion, recordOperator } from "./journey";
+import { recordSectionVisit, recordQA, recordOperator } from "./journey";
 
 // The revamped "Understand" surface: a lesson READER, not an empty chat box. The
 // learner lands on a real, rendered lesson for the first subtopic; the left rail
@@ -50,40 +50,50 @@ export default function Reader({
     setFollows([]);
     setSrc(null);
     setOpResult(null);
+    const sid = activeId;
+    const title = subtopics.find((s) => s.id === sid)?.title ?? "";
     startLoad(async () => {
-      const l = await readLesson(sessionId, activeId);
+      const l = await readLesson(sessionId, sid);
       setLesson(l);
       topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      // remember this section: its key idea (headline) + a one-line recap (the
+      // lesson's opening sentence) — the study sheet is built from these.
+      if (!l.unavailable) {
+        const recap = l.body.split(/(?<=[.!?])\s/)[0]?.slice(0, 200);
+        recordSectionVisit(versionId, sid, title, l.headline, recap);
+      }
     });
-    // record the section in the journey (for the personalized study sheet)
-    const title = subtopics.find((s) => s.id === activeId)?.title;
-    if (title) recordSection(versionId, title);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId]);
 
   function send() {
     const q = input.trim();
-    if (!q || asking) return;
+    if (!q || asking || activeId == null) return;
     setInput("");
-    recordQuestion(versionId, q);
+    const sid = activeId;
+    const title = activeSub?.title ?? "";
     const ctx = lessonContext();
     setFollows((f) => [...f, { q, a: null }]);
     startAsk(async () => {
       const a = await ask(sessionId, q, ctx, versionId);
       setFollows((f) => f.map((x, i) => (i === f.length - 1 ? { ...x, a } : x)));
+      // remember the exchange in this section's memory
+      if (a.reply) recordQA(versionId, sid, title, q, a.reply);
     });
   }
 
   function applyOp(op: OperatorKey) {
     if (activeId == null || opBusy) return;
+    const sid = activeId;
+    const title = activeSub?.title ?? "";
     setOpBusy(op);
     setOpResult(null);
     (async () => {
-      const result = await runOperator(sessionId, activeId, op);
+      const result = await runOperator(sessionId, sid, op);
       setOpBusy(null);
       if (result) {
         setOpResult({ op, result });
-        recordOperator(versionId, op, activeSub?.title ?? "", result.title);
+        recordOperator(versionId, sid, title, op, result.title, result.body);
       }
     })();
   }
